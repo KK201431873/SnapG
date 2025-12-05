@@ -9,8 +9,8 @@ Python programs for partially automating myelinated axon segmentation in microsc
 1. Download or clone this repository. Run these commands if you are cloning using git:
 
     ```bash
-    git clone https://github.com/KK201431873/myelin-segmentation.git
-    cd myelin-segmentation
+    git clone https://github.com/KK201431873/SnapG.git
+    cd SnapG
     ```
 
 2. Install Python 3 if not already installed.
