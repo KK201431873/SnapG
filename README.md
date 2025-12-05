@@ -1,4 +1,4 @@
-# myelin-segmentation
+# SnapG
 
 Python programs for partially automating myelinated axon segmentation in microscopy images.
 
