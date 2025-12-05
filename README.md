@@ -38,9 +38,10 @@ There are two main Python files:
 ### Using `gratio_tuner.py`
 
 1. Running the program
-    (Shell File) Double click `run_gratio_tuner.sh` in your file explorer. A terminal should automatically open and begin running the program.
 
-    (Terminal) Open a terminal in the project directory and run:
+    (**Shell File**) Double click `run_gratio_tuner.sh` in your file explorer. A terminal should automatically open and begin running the program.
+
+    (**Terminal**) Open a terminal in the project directory and run:
 
       ```bash
       python gratio_tuner.py
@@ -100,9 +101,10 @@ There are two main Python files:
 ### Using `gratio_image_processor.py`
 
 1. Running the program
-    (Shell File) Double click `run_gratio_image_processor.sh` in your file explorer. A terminal should automatically open and begin running the program.
 
-    (Terminal) Run:
+    (**Shell File**) Double click `run_gratio_image_processor.sh` in your file explorer. A terminal should automatically open and begin running the program.
+
+    (**Terminal**) Run:
 
       ```bash
       python gratio_image_processor.py
