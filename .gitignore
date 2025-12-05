@@ -8,3 +8,6 @@
 !.gitignore
 !README.md
 !requirements.txt
+
+!run_gratio_tuner.sh
+!run_gratio_image_processor.sh
