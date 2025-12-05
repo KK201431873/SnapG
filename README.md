@@ -37,16 +37,19 @@ There are two main Python files:
 
 ### Using `gratio_tuner.py`
 
-1. Open a terminal in the project directory and run:
+1. Running the program
+    (Shell File) Double click `run_gratio_tuner.sh` in your file explorer. A terminal should automatically open and begin running the program.
 
-    ```bash
-    python gratio_tuner.py
-    ```
+    (Terminal) Open a terminal in the project directory and run:
 
-   If on newer versions, use:
-    ```bash
-    py gratio_tuner.py
-    ```
+      ```bash
+      python gratio_tuner.py
+      ```
+
+    If on newer versions, use:
+      ```bash
+      py gratio_tuner.py
+      ```
 
 2. Select the image you want to tune the algorithm to.
 
@@ -96,16 +99,19 @@ There are two main Python files:
 
 ### Using `gratio_image_processor.py`
 
-1. Run:
+1. Running the program
+    (Shell File) Double click `run_gratio_image_processor.sh` in your file explorer. A terminal should automatically open and begin running the program.
 
-    ```bash
-    python gratio_image_processor.py
-    ```
+    (Terminal) Run:
 
-   If on newer versions, use:
-    ```bash
-    py gratio_image_processor.py
-    ```
+      ```bash
+      python gratio_image_processor.py
+      ```
+
+    If on newer versions, use:
+      ```bash
+      py gratio_image_processor.py
+      ```
 
 2. A GUI will appear with five buttons and a logs textbox.
 

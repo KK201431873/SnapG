@@ -1,13 +1,16 @@
-import cv2
-import numpy as np
-import tkinter as tk
-from tkinter import filedialog, Tk, messagebox
-from PIL import Image, ImageTk, ImageFont, ImageDraw
-import math
-import json
-import os
-from pathlib import Path
-import time
+try:
+    import cv2
+    import numpy as np
+    import tkinter as tk
+    from tkinter import filedialog, Tk, messagebox
+    from PIL import Image, ImageTk, ImageFont, ImageDraw
+    import math
+    import json
+    import os
+    from pathlib import Path
+    import time
+except ImportError as e:
+    raise ImportError(f"Required module missing: {e.name}. Please run [pip install -r requirements.txt] or run [py -m pip install -r requirements.txt] and try again.")
 
 CONFIG_DIR = "__program_config__"
 CONFIG_FILE = f"{CONFIG_DIR}/config_tuner.json"

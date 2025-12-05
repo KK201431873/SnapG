@@ -1,18 +1,21 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
-import json
-import os
-from pathlib import Path
-import cv2
-import numpy as np
-import math
-import keyboard
-import pickle
-import threading
-import time
-from datetime import datetime
-from screeninfo import get_monitors
-from PIL import Image, ImageFont, ImageDraw
+try:
+    import tkinter as tk
+    from tkinter import filedialog, messagebox
+    import json
+    import os
+    from pathlib import Path
+    import cv2
+    import numpy as np
+    import math
+    import keyboard
+    import pickle
+    import threading
+    import time
+    from datetime import datetime
+    from screeninfo import get_monitors
+    from PIL import Image, ImageFont, ImageDraw
+except ImportError as e:
+    raise ImportError(f"Required module missing: {e.name}. Please run [pip install -r requirements.txt] or run [py -m pip install -r requirements.txt] and try again.")
 
 CONFIG_DIR = "__program_config__"
 root_dir = Path(__file__).parent
