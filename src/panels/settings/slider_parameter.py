@@ -37,7 +37,7 @@ class NonScrollDoubleSpinBox(QDoubleSpinBox):
     def wheelEvent(self, event):
         event.ignore()
 
-class Parameter(QFrame):
+class SliderParameter(QFrame):
     """Adjustable fields for segmentation settings."""
     
     def __init__(self, 
@@ -102,5 +102,13 @@ class Parameter(QFrame):
         self.spin.valueChanged.connect(
             lambda v: self.slider.setValue(int(v * scale))
         )
+    
+    def get_slider(self) -> QSlider:
+        """Return this parameter's QSlider."""
+        return self.slider
+    
+    def get_spin_box(self) -> QSpinBox | QDoubleSpinBox:
+        """Return this parameter's QSpinBox."""
+        return self.spin
 
 

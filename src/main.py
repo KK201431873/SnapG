@@ -17,6 +17,8 @@ from panels.process.process_panel import ProcessPanel
 from panels.settings.settings_panel import SettingsPanel
 from panels.output.output_panel import OutputPanel
 
+from panels.settings.settings import Settings
+
 from app_state import load_save_state
 
 class MainWindow(QMainWindow):
@@ -33,7 +35,7 @@ class MainWindow(QMainWindow):
         # Init panels
         self.image_panel = ImagePanel()
         self.process_panel = ProcessPanel()
-        self.settings_panel = SettingsPanel()
+        self.settings_panel = SettingsPanel(settings)
         self.output_panel = OutputPanel()
 
         ## Set up docks
@@ -66,13 +68,13 @@ class MainWindow(QMainWindow):
             dock.setWidget(widget)
 
         self.addDockWidget(area, dock)
-
+        
+settings: Settings
 if __name__=="__main__":
     app = QApplication([])
+    settings = load_save_state(app, verbose=False)
 
     window = MainWindow()
     window.setMinimumSize(QSize(960,540))
-    load_save_state(app, verbose=False)
-    
     window.show()
     app.exec()
