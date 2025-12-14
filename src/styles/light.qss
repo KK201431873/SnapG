@@ -1,4 +1,4 @@
-/* Global defaults */
+/* Global */
 QMainWindow::separator {
     background: #aaaaaa;
     width: 4px;
@@ -7,6 +7,20 @@ QMainWindow::separator {
 
 QDockWidget {
     margin: 0px;
+}
+
+QMenuBar#AppMenuBar {
+    background-color: #dfdfdf;
+    color: #202020;
+    font-size: 12px;
+}
+
+QMenuBar::item {
+    padding: 3px 10px; /* Top/Bottom padding, Left/Right padding */
+}
+
+QMenuBar::item:selected, QMenuBar::item:hover {
+    background-color: lightgray;
 }
 
 /* SettingsPanel */

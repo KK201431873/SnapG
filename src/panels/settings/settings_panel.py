@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 from panels.settings.scale_parameter import ScaleParameter
 from panels.settings.bool_parameter import BoolParameter
 from panels.settings.slider_parameter import SliderParameter
-from panels.settings.settings import Settings
+from models import Settings
 
 class SettingsPanel(QWidget):
     """Adjustable fields for segmentation settings."""
@@ -87,7 +87,11 @@ class SettingsPanel(QWidget):
     
     def emit_fields(self):
         """Emits custom signal containing all settings fields."""
-        self.settings_changed.emit(Settings(
+        self.settings_changed.emit(self.to_settings())
+    
+    def to_settings(self) -> Settings:
+        """Return all current field values as a `Settings` object."""
+        return Settings(
             scale = float(self.scale_prm_widget.get_field_widget().text()),
             scale_units = self.scale_prm_widget.get_combo_box_widget().currentText(),
             show_original = self.show_orig_prm_widget.get_checkbox().isChecked(),
@@ -100,7 +104,7 @@ class SettingsPanel(QWidget):
             max_size = int(self.max_size_prm_widget.get_spin_box().value()),
             convexity = self.convexity_prm_widget.get_spin_box().value(),
             circularity = self.circularity_prm_widget.get_spin_box().value()
-        ))
+        )
         
     def receive_settings(self, settings: Settings):
         if settings.show_original:

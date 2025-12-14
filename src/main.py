@@ -9,25 +9,28 @@ from PySide6.QtWidgets import (
     QDockWidget, 
     QWidget,
     QScrollArea,
-    QFrame
+    QFrame,
+    QMessageBox
 )
 
 from panels.image.image_panel import ImagePanel
 from panels.process.process_panel import ProcessPanel
 from panels.settings.settings_panel import SettingsPanel
 from panels.output.output_panel import OutputPanel
+from panels.menu.menu_bar import MenuBar
 
-from panels.settings.settings import Settings
+from models import AppState
 
-from app_state import load_save_state
+from save_load import load_state
 
 class MainWindow(QMainWindow):
     """SnapG Application Window."""
 
-    image_panel: QWidget
-    process_panel: QWidget
-    settings_panel: QWidget
-    output_panel: QWidget
+    image_panel: ImagePanel
+    process_panel: ProcessPanel
+    settings_panel: SettingsPanel
+    output_panel: OutputPanel
+    menu_bar: MenuBar
 
     def __init__(self):
         super().__init__()
@@ -35,14 +38,23 @@ class MainWindow(QMainWindow):
         # Init panels
         self.image_panel = ImagePanel()
         self.process_panel = ProcessPanel()
-        self.settings_panel = SettingsPanel(settings)
+        self.settings_panel = SettingsPanel(app_state.settings)
         self.output_panel = OutputPanel()
+        self.menu_bar = MenuBar(
+            app_state,
+            self.image_panel,
+            self.process_panel,
+            self.settings_panel,
+            self.output_panel
+        )
 
-        ## Set up docks
         self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.create_fixed_dock("Segmentation Settings", self.settings_panel, Qt.DockWidgetArea.RightDockWidgetArea, scrollable=True)
         self.create_fixed_dock("Output", self.output_panel, Qt.DockWidgetArea.BottomDockWidgetArea)
         self.setCentralWidget(self.image_panel)
+
+        # Menu bar
+        self.setMenuBar(self.menu_bar)
     
     def create_fixed_dock(self,
                           title: str,
@@ -68,11 +80,20 @@ class MainWindow(QMainWindow):
             dock.setWidget(widget)
 
         self.addDockWidget(area, dock)
+    
+    def closeEvent(self, event):
+        # Ask for confirmation before closing
+        confirmation = QMessageBox.question(self, "Confirmation", "Are you sure you want to close the application?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+
+        if confirmation == QMessageBox.StandardButton.Yes:
+            event.accept()  # Close the app
+        else:
+            event.ignore()  # Don't close the app
         
-settings: Settings
+app_state: AppState
 if __name__=="__main__":
     app = QApplication([])
-    settings = load_save_state(app, verbose=False)
+    app_state = load_state(app, verbose=False)
 
     window = MainWindow()
     window.setMinimumSize(QSize(960,540))

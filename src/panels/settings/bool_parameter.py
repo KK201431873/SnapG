@@ -42,7 +42,7 @@ class BoolParameter(QFrame):
         # units dropdown
         self.checkbox = QCheckBox()
         self.checkbox.setChecked(value)
-        hlayout.addWidget(self.checkbox)
+        hlayout.addWidget(self.checkbox, alignment=Qt.AlignmentFlag.AlignRight)
         
         # add layout to current widget
         self.setLayout(hlayout)
