@@ -7,10 +7,10 @@ from PySide6.QtWidgets import (
     QTextEdit
 )
 
+from models import AppState
+
 class ProcessPanel(QWidget):
     """Batch image processing operations."""
 
-    def __init__(self):
+    def __init__(self, app_state: AppState):
         super().__init__()
-        self.setMinimumSize(QSize(100,100))
-        pass

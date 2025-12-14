@@ -1,23 +1,57 @@
 from pydantic import BaseModel
 
-class Style(BaseModel):
-    """Data class to store style options."""
+class View(BaseModel):
+    """Data class to store view options."""
 
     theme: str
     """Application color theme (only `light` supported so far)."""
 
+    process_panel_visible: bool
+    """Visibility of `ProcessPanel`."""
+
+    settings_panel_visible: bool
+    """Visibility of `SettingsPanel`."""
+
+    output_panel_visible: bool
+    """Visibility of `OutputPanel`."""
+
+    process_panel_width: int
+    """Width of `ProcesPanel` (px)."""
+
+    settings_panel_width: int
+    """Width of `ProcesPanel` (px)."""
+
+    output_panel_height: int
+    """Height of `ProcesPanel` (px)."""
+
     @staticmethod
-    def from_dict(style_dict: dict) -> 'Style':
-        """Load a `Style` object from the given dictionary."""
-        return Style(
-            theme=style_dict['theme']
+    def from_dict(view_dict: dict) -> 'View':
+        """Load a `View` object from the given dictionary."""
+        return View(
+            theme=view_dict['theme'],
+
+            process_panel_visible=view_dict['process_panel_visible'],
+            settings_panel_visible=view_dict['settings_panel_visible'],
+            output_panel_visible=view_dict['output_panel_visible'],
+
+            process_panel_width=view_dict['process_panel_width'],
+            settings_panel_width=view_dict['settings_panel_width'],
+            output_panel_height=view_dict['output_panel_height']
         )
     
     @staticmethod
-    def default() -> 'Style':
-        """Return the default `Style` options."""
-        return Style(
-            theme="light"
+    def default() -> 'View':
+        """Return the default `View` options."""
+        return View(
+            theme="light",
+
+            process_panel_visible=True,
+            settings_panel_visible=True,
+            output_panel_visible=True,
+
+            process_panel_width=300,
+            settings_panel_width=300,
+            output_panel_height=200
         )
 
 
@@ -100,8 +134,8 @@ class Settings(BaseModel):
 class AppState(BaseModel):
     """Wrapper data class containing all app options."""
 
-    style: Style
-    """Style options."""
+    view: View
+    """View options."""
 
     settings: Settings
     """Segmentation settings."""
@@ -110,7 +144,7 @@ class AppState(BaseModel):
     def from_dict(app_state_dict: dict) -> 'AppState':
         """Load an `AppState` object from the given dictionary."""
         return AppState(
-            style=Style.from_dict(app_state_dict['style']),
+            view=View.from_dict(app_state_dict['view']),
             settings=Settings.from_dict(app_state_dict['settings'])
         )
     
@@ -118,6 +152,6 @@ class AppState(BaseModel):
     def default() -> 'AppState':
         """Return the default `AppState` options."""
         return AppState(
-            style=Style.default(),
+            view=View.default(),
             settings=Settings.default()
         )

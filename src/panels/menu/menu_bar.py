@@ -1,7 +1,8 @@
 from PySide6.QtCore import (
     Qt,
     QSize,
-    Signal
+    Signal,
+    SignalInstance
 )
 from PySide6.QtGui import (
     QAction
@@ -27,23 +28,36 @@ from panels.output.output_panel import OutputPanel
 class MenuBar(QMenuBar):
 
     theme_changed = Signal(str)
+    """Emits color theme changes."""
+
+    process_visible_changed = Signal(bool)
+    """Emits `ProcessPanel`'s visibility."""
+
+    settings_visible_changed = Signal(bool)
+    """Emits `SettingsPanel`'s visibility."""
+
+    output_visible_changed = Signal(bool)
+    """Emits `OutputPanel`'s visibility."""
+
+    reset_view = Signal()
+    """Emits when user requests reset view."""
 
     def __init__(self, 
                  app_state: AppState,
                  image_panel: ImagePanel,
-                 process_panel: ProcessPanel,
-                 settings_panel: SettingsPanel,
-                 output_panel: OutputPanel
+                 process_dock: QDockWidget,
+                 settings_dock: QDockWidget,
+                 output_dock: QDockWidget
         ):
         super().__init__()
         self.setObjectName("AppMenuBar")
 
         # -- private fields --
-        self.theme = app_state.style.theme
+        self.theme = app_state.view.theme
         self.image_panel = image_panel
-        self.process_panel = process_panel
-        self.settings_panel = settings_panel
-        self.output_panel = output_panel
+        self.process_dock = process_dock
+        self.settings_dock = settings_dock
+        self.output_dock = output_dock
 
         # === the actual menu ==
         # -- file --
@@ -75,15 +89,46 @@ class MenuBar(QMenuBar):
 
         # -- view --
         view_menu = self.addMenu("View")
-        view_theme_menu = view_menu.addMenu("Choose color theme...")
+        
+        # panel visibility
+        view_theme_menu = view_menu.addMenu("Panels")
+        # process
+        self.view_process_action = QAction("Batch Processing Panel", self)
+        self.view_process_action.setCheckable(True)
+        self.view_process_action.triggered.connect(lambda: self._update_process_visibility(toggle=True))
+        # settings
+        self.view_settings_action = QAction("Segmentation Settings Panel", self)
+        self.view_settings_action.setCheckable(True)
+        self.view_settings_action.triggered.connect(lambda: self._update_settings_visibility(toggle=True))
+        # output
+        self.view_output_action = QAction("Output Panel", self)
+        self.view_output_action.setCheckable(True)
+        self.view_output_action.triggered.connect(lambda: self._update_output_visibility(toggle=True))
+
+        view_theme_menu.addAction(self.view_process_action)
+        view_theme_menu.addAction(self.view_settings_action)
+        view_theme_menu.addAction(self.view_output_action)
+        # sync menu actions with actual visibility
+        self.process_dock.visibilityChanged.connect(
+            self.view_process_action.setChecked
+        )
+        self.settings_dock.visibilityChanged.connect(
+            self.view_settings_action.setChecked
+        )
+        self.output_dock.visibilityChanged.connect(
+            self.view_output_action.setChecked
+        )
+
+        # color themes
+        view_theme_menu = view_menu.addMenu("Color theme")
 
         self.view_theme_light_action = QAction("Light", self)
         self.view_theme_light_action.setCheckable(True)
-        self.view_theme_light_action.triggered.connect(self._set_light_theme)
+        self.view_theme_light_action.triggered.connect(lambda: self._update_theme('light'))
 
         self.view_theme_dark_action = QAction("Dark", self)
         self.view_theme_dark_action.setCheckable(True)
-        self.view_theme_dark_action.triggered.connect(self._set_dark_theme)
+        self.view_theme_dark_action.triggered.connect(lambda: self._update_theme('dark'))
 
         #TODO: fix dark color theme
         self.view_theme_dark_action.setDisabled(True)
@@ -92,21 +137,50 @@ class MenuBar(QMenuBar):
             self.view_theme_light_action,
             self.view_theme_dark_action
         ])
-        self._update_theme()
+        self._update_theme(self.theme)
 
+        # reset view
+        view_menu.addSeparator()
+        self.reset_view_action = QAction("Reset View", self)
+        self.reset_view_action.triggered.connect(self.reset_view.emit)
+        view_menu.addAction(self.reset_view_action)
     
-    def _set_light_theme(self):
-        """Set the theme to `light`."""
-        self.theme = 'light'
-        self._update_theme()
-    
-    def _set_dark_theme(self):
-        """Set the theme to `dark`."""
-        self.theme = 'dark'
-        self._update_theme()
+    def _update_process_visibility(self, toggle: bool = False):
+        """Update the `ProcessPanel`'s visibility, action, and emit signal."""
+        if toggle:
+            visible = not self.process_dock.isVisible()
+        else:
+            visible = self.process_dock.isVisible()
 
-    def _update_theme(self):
-        """Update the check marks in each color theme menu action and emit signal."""
+        self.process_dock.setVisible(visible)
+        self.view_process_action.setChecked(visible)
+        self.process_visible_changed.emit(visible)
+    
+    def _update_settings_visibility(self, toggle: bool = False):
+        """Update the `SettingsPanel`'s visibility, action, and emit signal."""
+        if toggle:
+            visible = not self.settings_dock.isVisible()
+        else:
+            visible = self.settings_dock.isVisible()
+
+        self.settings_dock.setVisible(visible)
+        self.view_settings_action.setChecked(visible)
+        self.settings_visible_changed.emit(visible)
+    
+    def _update_output_visibility(self, toggle: bool = False):
+        """Update the `OutputPanel`'s visibility, action, and emit signal."""
+        if toggle:
+            visible = not self.output_dock.isVisible()
+        else:
+            visible = self.output_dock.isVisible()
+            
+        self.output_dock.setVisible(visible)
+        self.view_output_action.setChecked(visible)
+        self.output_visible_changed.emit(visible)
+
+    def _update_theme(self, theme: str):
+        """Set theme, update the check marks in each action and emit signal."""
+        self.theme = theme
         self.view_theme_light_action.setChecked(self.theme == 'light')
         self.view_theme_dark_action.setChecked(self.theme == 'dark')
         self.theme_changed.emit(self.theme)

@@ -388,11 +388,17 @@ root.bind("<Escape>", close)
 # Add textbox for nm per pixel
 frm = tk.Frame(root)
 frm.pack(pady=5)
+
 npp_string = str(nm_per_pixel)
 npp_label = tk.Label(frm, text="nm per pixel:")
 npp_label.pack(side="left")
+
 npp_var = tk.StringVar()
 npp_var.set(npp_string)
+
+unit_type = tk.StringVar()
+units_menu = tk.OptionMenu(frm, variable=unit_type, value="Units...", values=["um","nm"])
+units_menu.pack(side="left")
 
 def on_entry_change(*args):
     if entry.get().strip()==npp_string:

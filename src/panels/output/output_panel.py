@@ -8,10 +8,12 @@ from PySide6.QtWidgets import (
     QTextBrowser
 )
 
+from models import AppState
+
 class OutputPanel(QWidget):
     """Textbox for showing program outputs."""
 
-    def __init__(self):
+    def __init__(self, app_state: AppState):
         super().__init__()
 
         # add widgets to layout

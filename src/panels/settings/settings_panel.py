@@ -14,15 +14,17 @@ from PySide6.QtWidgets import (
 from panels.settings.scale_parameter import ScaleParameter
 from panels.settings.bool_parameter import BoolParameter
 from panels.settings.slider_parameter import SliderParameter
-from models import Settings
+from models import AppState, Settings
 
 class SettingsPanel(QWidget):
     """Adjustable fields for segmentation settings."""
 
     settings_changed = Signal(Settings)
     
-    def __init__(self, settings: Settings):
+    def __init__(self, app_state: AppState):
         super().__init__()
+        settings = app_state.settings
+        self.resize(QSize(400, self.height()))
 
         # init vertical layout
         self.vlayout = QVBoxLayout(self)

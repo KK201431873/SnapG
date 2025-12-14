@@ -23,10 +23,23 @@ QMenuBar::item:selected, QMenuBar::item:hover {
     background-color: lightgray;
 }
 
+
+
+/* ProcessPanel */
+QDockWidget#ProcessPanel {
+    min-width: 100px;
+    max-width: 500px;
+}
+
+QWidget#ProcessPanel {
+}
+
+
+
 /* SettingsPanel */
 QDockWidget#SettingsPanel {
     min-width: 250px;
-    max-width: 400px;
+    max-width: 500px;
 }
 
 QWidget#SettingsPanel {
@@ -44,11 +57,12 @@ QFrame#Parameter QLabel {
 
 
 
-/* ProcessPanel */
-QWidget#ProcessPanel {
+/* OutputPanel */
+QDockWidget#OutputPanel {
+    min-height: 50px;
+    max-height: 600px;
 }
 
-/* OutputPanel */
 QWidget#OutputPanel {
 }
 
