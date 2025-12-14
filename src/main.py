@@ -10,7 +10,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QScrollArea,
     QFrame,
-    QMessageBox
+    QMessageBox,
+    QApplication
 )
 
 from panels.image.image_panel import ImagePanel
@@ -23,6 +24,8 @@ from models import AppState, Style, Settings
 
 from save_load import load_state, write_state
 from styles.style_manager import get_style_sheet
+
+from typing import cast
 
 class MainWindow(QMainWindow):
     """SnapG Application Window."""
@@ -49,6 +52,7 @@ class MainWindow(QMainWindow):
             self.output_panel
         )
         self.menu_bar.get_exit_action().triggered.connect(self.close)
+        self.menu_bar.theme_changed.connect(self.refresh_style)
 
         self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.create_fixed_dock("Segmentation Settings", self.settings_panel, Qt.DockWidgetArea.RightDockWidgetArea, scrollable=True)
@@ -82,19 +86,13 @@ class MainWindow(QMainWindow):
             dock.setWidget(widget)
 
         self.addDockWidget(area, dock)
+
+    def refresh_style(self, theme: str):
+        """Set the app style sheet according to the given theme."""
+        app.setStyleSheet(get_style_sheet(theme))
     
     def closeEvent(self, event):
-        confirmation = QMessageBox.question(
-            self, 
-            "Confirmation", 
-            "Are you sure you want to close the application?", 
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-        if confirmation == QMessageBox.StandardButton.Yes:
-            write_state(self.get_app_state())
-            event.accept()
-        else:
-            event.ignore()
+        write_state(self.get_app_state())
     
     def get_app_state(self) -> AppState:
         """Returns the latest `AppState` object."""

@@ -29,7 +29,7 @@ class BoolParameter(QFrame):
                  value: bool
         ):
         super().__init__()
-        self.setObjectName("ScaleParameter")
+        self.setObjectName("BoolParameter")
         self.setAutoFillBackground(True)
 
         # -- init layout --

@@ -48,7 +48,7 @@ class SliderParameter(QFrame):
                  units: str = ""
         ):
         super().__init__()
-        self.setObjectName("Parameter")
+        self.setObjectName("SliderParameter")
         self.setAutoFillBackground(True)
         is_float = any(isinstance(x, float) for x in (value, valstep, *bounds))
 
