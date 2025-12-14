@@ -68,9 +68,8 @@ class MenuBar(QMenuBar):
 
         file_menu.addSeparator()
 
-        exit_action = QAction("Exit", self)
-        exit_action.triggered.connect(parent.close)
-        file_menu.addAction(exit_action)
+        self.exit_action = QAction("Exit", self)
+        file_menu.addAction(self.exit_action)
 
         # -- view --
         view_menu = self.addMenu("View")
@@ -85,3 +84,7 @@ class MenuBar(QMenuBar):
     def get_theme(self) -> str:
         """Return the application's color theme."""
         return self.theme
+    
+    def get_exit_action(self) -> QAction:
+        """Return the `MenuBar`'s exit action"""
+        return self.exit_action

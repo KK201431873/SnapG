@@ -19,9 +19,10 @@ from panels.settings.settings_panel import SettingsPanel
 from panels.output.output_panel import OutputPanel
 from panels.menu.menu_bar import MenuBar
 
-from models import AppState
+from models import AppState, Style, Settings
 
-from save_load import load_state
+from save_load import load_state, write_state
+from styles.style_manager import get_style_sheet
 
 class MainWindow(QMainWindow):
     """SnapG Application Window."""
@@ -47,6 +48,7 @@ class MainWindow(QMainWindow):
             self.settings_panel,
             self.output_panel
         )
+        self.menu_bar.get_exit_action().triggered.connect(self.close)
 
         self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.create_fixed_dock("Segmentation Settings", self.settings_panel, Qt.DockWidgetArea.RightDockWidgetArea, scrollable=True)
@@ -82,18 +84,34 @@ class MainWindow(QMainWindow):
         self.addDockWidget(area, dock)
     
     def closeEvent(self, event):
-        # Ask for confirmation before closing
-        confirmation = QMessageBox.question(self, "Confirmation", "Are you sure you want to close the application?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-
+        confirmation = QMessageBox.question(
+            self, 
+            "Confirmation", 
+            "Are you sure you want to close the application?", 
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
         if confirmation == QMessageBox.StandardButton.Yes:
-            event.accept()  # Close the app
+            write_state(self.get_app_state())
+            event.accept()
         else:
-            event.ignore()  # Don't close the app
+            event.ignore()
+    
+    def get_app_state(self) -> AppState:
+        """Returns the latest `AppState` object."""
+        return AppState(
+            style=Style(
+                theme=self.menu_bar.get_theme()
+            ),
+            settings=self.settings_panel.to_settings()
+        )
         
 app_state: AppState
 if __name__=="__main__":
     app = QApplication([])
-    app_state = load_state(app, verbose=False)
+
+    # Load state
+    app_state = load_state()
+    app.setStyleSheet(get_style_sheet(app_state.style.theme))
 
     window = MainWindow()
     window.setMinimumSize(QSize(960,540))

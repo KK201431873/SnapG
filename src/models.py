@@ -1,11 +1,5 @@
 from pydantic import BaseModel
 
-from panels.image.image_panel import ImagePanel
-from panels.process.process_panel import ProcessPanel
-from panels.settings.settings_panel import SettingsPanel
-from panels.output.output_panel import OutputPanel
-from panels.menu.menu_bar import MenuBar
-
 class Style(BaseModel):
     """Data class to store style options."""
 
@@ -24,18 +18,6 @@ class Style(BaseModel):
         """Return the default `Style` options."""
         return Style(
             theme="light"
-        )
-    
-    @staticmethod
-    def from_widgets(image_panel: ImagePanel,
-                     process_panel: ProcessPanel,
-                     settings_panel: SettingsPanel,
-                     output_panel: OutputPanel,
-                     menu_bar: MenuBar
-    ) -> 'Style':
-        """Create a `Style` object from the given widgets"""
-        return Style(
-            theme=menu_bar.get_theme()
         )
 
 
@@ -113,11 +95,6 @@ class Settings(BaseModel):
             convexity=0.0,
             circularity=0.0
         )
-    
-    @staticmethod
-    def from_widgets(settings_panel: SettingsPanel) -> 'Settings':
-        """Create a `Settings` object from the given widgets"""
-        return settings_panel.to_settings()
 
 
 class AppState(BaseModel):
@@ -143,17 +120,4 @@ class AppState(BaseModel):
         return AppState(
             style=Style.default(),
             settings=Settings.default()
-        )
-    
-    @staticmethod
-    def from_widgets(image_panel: ImagePanel,
-                     process_panel: ProcessPanel,
-                     settings_panel: SettingsPanel,
-                     output_panel: OutputPanel,
-                     menu_bar: MenuBar
-    ) -> 'AppState':
-        """Create an `AppState` object from the given widgets"""
-        return AppState(
-            style=Style.from_widgets(image_panel, process_panel, settings_panel, output_panel, menu_bar),
-            settings=Settings.from_widgets(settings_panel)
         )
