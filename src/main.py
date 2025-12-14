@@ -1,6 +1,7 @@
 from PySide6.QtCore import (
     Qt,
-    QSize
+    QSize,
+    QEvent
 )
 from PySide6.QtGui import (
     QIcon
@@ -47,11 +48,23 @@ class MainWindow(QMainWindow):
         self.process_panel = ProcessPanel(app_state)
         self.settings_panel = SettingsPanel(app_state)
         self.output_panel = OutputPanel(app_state)
-        self.setCentralWidget(self.image_panel)
+
+        # create background widget (will contain image widget)
+        empty_central = QWidget()
+        empty_central.setMinimumSize(1, 1)
+        self.setCentralWidget(empty_central)
+        self.image_panel.setParent(empty_central)
+        self.image_panel.lower()
+        self.image_panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        # resize events
+        empty_central.installEventFilter(self)
+        self._central = empty_central
+
         # docks
         self.process_dock = self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.settings_dock = self.create_fixed_dock("Segmentation Settings", self.settings_panel, Qt.DockWidgetArea.RightDockWidgetArea, scrollable=True)
         self.output_dock = self.create_fixed_dock("Output", self.output_panel, Qt.DockWidgetArea.BottomDockWidgetArea)
+
         # load in previous dock state
         self.set_dock_state(app_state.view)
 
@@ -72,6 +85,22 @@ class MainWindow(QMainWindow):
         self.menu_bar.output_visible_changed.connect(self.output_dock.setVisible)
         # add to app widget
         self.setMenuBar(self.menu_bar)
+
+    def eventFilter(self, obj, event: QEvent):
+        if obj is self._central:
+            self._resize_image_panel()
+        return super().eventFilter(obj, event)
+    
+    def _resize_image_panel(self):
+        menu_height = self.menuBar().height() if self.menuBar() else 0
+
+        x_offset = -self.process_dock.width() if self.process_dock.isVisible() else 4
+        self.image_panel.setGeometry(
+            x_offset,
+            menu_height,
+            self.width(),
+            self.height() - menu_height
+        )
     
     def create_fixed_dock(self,
                           title: str,
@@ -138,6 +167,7 @@ class MainWindow(QMainWindow):
             ),
             settings=self.settings_panel.to_settings()
         )
+
         
 app_state: AppState
 if __name__=="__main__":

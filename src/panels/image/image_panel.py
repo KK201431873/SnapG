@@ -2,6 +2,9 @@ from PySide6.QtCore import (
     QSize,
     Signal
 )
+from PySide6.QtGui import (
+    QImage
+)
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout, 
@@ -9,9 +12,17 @@ from PySide6.QtWidgets import (
     QMessageBox
 )
 
+from panels.image.image_view import ImageView
+
 from models import AppState
 
 from pathlib import Path
+from enum import Enum
+
+class Mode(Enum):
+    NO_IMAGE = 0
+    TUNE = 1
+    REVIEW = 2
 
 class ImagePanel(QWidget):
     """Central image viewer and contour selector."""
@@ -26,6 +37,15 @@ class ImagePanel(QWidget):
         self.image_files: list[Path] = []
         self.pkl_files: list[Path] = []
         self.current_file: Path | None = None
+        self.mode: Mode = Mode.NO_IMAGE
+
+        # layout
+        vlayout = QVBoxLayout(self)
+        vlayout.setContentsMargins(0, 0, 0, 0)
+        
+        # image view
+        self.image_view = ImageView(self)
+        vlayout.addWidget(self.image_view)
     
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
@@ -87,3 +107,4 @@ class ImagePanel(QWidget):
             ).exec()
             return False
         return True
+    
