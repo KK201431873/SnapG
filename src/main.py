@@ -47,10 +47,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         
         # -- Init panels --
-        self.image_panel = ImagePanel(app_state)
         self.process_panel = ProcessPanel(app_state)
         self.settings_panel = SettingsPanel(app_state)
         self.output_panel = OutputPanel(app_state)
+        self.image_panel = ImagePanel(app_state, self.settings_panel)
+        self.settings_panel.settings_changed.connect(self.image_panel.receive_settings)
+        self.settings_panel.emit_fields() # update ImagePanel
 
         # create background widget (will contain image widget)
         empty_central = QWidget()

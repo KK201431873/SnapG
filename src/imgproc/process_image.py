@@ -17,8 +17,8 @@ def convexness(contour, hull):
     return contour_area/hull_area
 
 def process_image(
-        input_image: npt.NDArray[np.uint8], 
-        image_resize_factor: float,
+        input_image: npt.NDArray, 
+        resolution_divisor: float,
         show_thresholded: bool,
         nm_per_pixel: float,
         thresh_val: int, 
@@ -31,7 +31,7 @@ def process_image(
         circ_thresh: float
     ):
     h, w = input_image.shape
-    linear_correction_ratio = 1.0 / image_resize_factor
+    linear_correction_ratio = 1.0 / resolution_divisor
     area_correction_ratio = linear_correction_ratio ** 2
     dilate = round(dilate * linear_correction_ratio)
     erode = round(erode * linear_correction_ratio)
@@ -201,8 +201,8 @@ def process_image(
         # Calculate circularity
         circularity = 4 * math.pi * cv2.contourArea(inner_contour[0]) / (contour_perimeter ** 2) if contour_perimeter != 0 else 0
 
-        inner_diameter = (2*radius)*nm_per_pixel/image_resize_factor
-        outer_diameter = inner_diameter + 2*thickness*nm_per_pixel*image_resize_factor
+        inner_diameter = (2*radius)*nm_per_pixel/resolution_divisor
+        outer_diameter = inner_diameter + 2*thickness*nm_per_pixel*resolution_divisor
         
         # Draw contour and label thickness on output image
         cv2.drawContours(out_img, inner_contour + np.array([[[x_min, y_min]]]), -1, (0, 255, 0), draw_scale)

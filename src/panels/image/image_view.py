@@ -164,7 +164,6 @@ class ImageView(QWidget):
             self.drag_active = False
         elif event.button() == Qt.MouseButton.LeftButton:
             is_in_image, image_point = self._in_image(event.pos())
-            print(is_in_image, image_point)
             # Propagate mouse event up
             self.mouse_pressed.emit(is_in_image, image_point)
         else:

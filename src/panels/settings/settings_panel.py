@@ -39,7 +39,7 @@ class SettingsPanel(QWidget):
         self.scale_prm_widget = ScaleParameter(settings.scale, settings.scale_units)
         self.scale_prm_widget.get_field_widget().textChanged.connect(self.emit_fields)
         self.scale_prm_widget.get_combo_box_widget().activated.connect(self.emit_fields)
-        self.res_divisor_prm_widget = self.new_param("Image Res. Divisor", settings.resolution_divisor, 0.01, (0, 10))
+        self.res_divisor_prm_widget = self.new_param("Image Res. Divisor", settings.resolution_divisor, 0.01, (1, 50))
 
         self.show_orig_prm_widget = BoolParameter("Show Original", settings.show_original)
         self.show_orig_prm_widget.get_checkbox().stateChanged.connect(self.emit_fields)
@@ -78,9 +78,6 @@ class SettingsPanel(QWidget):
         # -- connect signal --
         self.settings_changed.connect(self.receive_settings)
 
-        # emit once
-        self.emit_fields()
-
     def new_param(self, 
                  name: str, 
                  value: int | float,
@@ -95,7 +92,7 @@ class SettingsPanel(QWidget):
         return slider_parameter
     
     def emit_fields(self):
-        """Emits custom signal containing all settings fields."""
+        """Emits signal containing all settings fields."""
         self.settings_changed.emit(self.to_settings())
 
     def set_settings(self, settings: Settings):

@@ -12,9 +12,12 @@ from PySide6.QtWidgets import (
     QMessageBox
 )
 
+from panels.settings.settings_panel import SettingsPanel
 from panels.image.image_view import ImageView
 
-from models import AppState, SegmentationData, ContourData, ImagePanelState
+from imgproc.process_image import process_image
+
+from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings
 
 from pathlib import Path
 from enum import Enum
@@ -31,16 +34,19 @@ class Mode(Enum):
 class ImagePanel(QWidget):
     """Central image viewer and contour selector."""
 
-    def __init__(self, app_state: AppState):
+    def __init__(self, app_state: AppState, settings_panel: SettingsPanel):
         super().__init__()
+        self.settings_panel = settings_panel
         
         # init files lists and state
         self.image_files: list[Path] = [Path(p) for p in app_state.image_panel_state.image_files]
         self.seg_files: list[Path] = [Path(p) for p in app_state.image_panel_state.seg_files]
         current_file_str = app_state.image_panel_state.current_file
         self.current_file: Path | None = Path(current_file_str) if current_file_str != "" else None
-        self.current_image: npt.NDArray | None = None
+        self.current_original_image: npt.NDArray | None = None
+        self.display_image: npt.NDArray | None = None
         self.current_seg_data: SegmentationData | None = None
+        self.settings: Settings | None = None
         self.mode: Mode = Mode(app_state.image_panel_state.mode)
 
         # layout
@@ -60,6 +66,8 @@ class ImagePanel(QWidget):
         if len(filtered_paths) > 0:
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
+            # request imgproc settings
+            self.settings_panel.emit_fields()
     
     def _set_current_file(self, 
                           file_path: Path, 
@@ -115,6 +123,12 @@ class ImagePanel(QWidget):
                 self
             ).exec()
         return valid
+
+    def receive_settings(self, settings: Settings):
+        """Receive new settings and update image."""
+        self.settings = settings
+        print('received settings')
+        self.update_image()
     
     def _get_segmentation_data(self, file_path: Path) -> SegmentationData | None:
         """
@@ -171,16 +185,57 @@ class ImagePanel(QWidget):
         
         # retrieve image
         if self.mode == Mode.TUNE:
-            self.current_image = cv2.imread(str(self.current_file))
+            self.current_original_image = cv2.imread(str(self.current_file))
+            self._process_current_image()
         elif self.mode == Mode.REVIEW:
             self.current_seg_data = self._get_segmentation_data(self.current_file)
             if self.current_seg_data is not None:
-                self.current_image = self.current_seg_data.image
+                self.current_original_image = self.current_seg_data.image
+            self.display_image = self.current_original_image
 
         # set image
-        if self.current_image is None:
+        if self.display_image is None:
             return
-        self.image_view.set_image(self.current_image)
+        self.image_view.set_image(self.display_image)
+    
+    def _process_current_image(self):
+        """Process the current image according to segmentation settings."""
+        if self.current_original_image is not None:
+            # check settings exists
+            if self.settings is None:
+                self.display_image = self.current_original_image
+                return
+            
+            # check show original
+            settings = self.settings
+            if settings.show_original:
+                self.display_image = self.current_original_image
+                return 
+            
+            # process image
+            resized_image = cv2.resize(
+                self.current_original_image, 
+                None, 
+                fx=1/settings.resolution_divisor, 
+                fy=1/settings.resolution_divisor
+            )
+            resized_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
+            nm_per_pixel = settings.scale if settings.scale_units == "nm" else settings.scale/1000
+            processed_image, data = process_image(
+                resized_image,
+                settings.resolution_divisor,
+                settings.show_threshold,
+                nm_per_pixel,
+                settings.threshold,
+                settings.radius,
+                settings.dilate,
+                settings.erode,
+                settings.min_size,
+                settings.max_size,
+                settings.convexity,
+                settings.circularity
+            )
+            self.display_image = processed_image
     
     def set_image_view(self, image_panel_state: ImagePanelState):
         """Set the center position and zoom of the `ImageView` to the given values."""
