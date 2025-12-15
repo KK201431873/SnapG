@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QScrollArea,
     QFrame,
-    QMessageBox,
+    QFileDialog,
     QApplication,
     QStyle
 )
@@ -30,6 +30,8 @@ from models import AppState, View, Settings
 from save_load import load_state, write_state
 from styles.style_manager import get_style_sheet
 
+from datetime import datetime
+from pathlib import Path
 import sys
 
 class MainWindow(QMainWindow):
@@ -76,10 +78,14 @@ class MainWindow(QMainWindow):
             self.settings_dock,
             self.output_dock
         )
+        # File signals
+        self.menu_bar.open_settings_triggered.connect(self.open_settings_file)
+        self.menu_bar.open_images_triggered.connect(self.open_image_files)
+        self.menu_bar.save_settings_triggered.connect(self.save_settings_to_file)
         self.menu_bar.get_exit_action().triggered.connect(self.close)
+        # View signals
         self.menu_bar.theme_changed.connect(self.refresh_style)
-        self.menu_bar.reset_view.connect(lambda: self.set_dock_state(View.default()))
-        # panel visibility signals
+        self.menu_bar.reset_view_triggered.connect(lambda: self.set_dock_state(View.default()))
         self.menu_bar.process_visible_changed.connect(self.process_dock.setVisible)
         self.menu_bar.settings_visible_changed.connect(self.settings_dock.setVisible)
         self.menu_bar.output_visible_changed.connect(self.output_dock.setVisible)
@@ -128,6 +134,41 @@ class MainWindow(QMainWindow):
 
         self.addDockWidget(area, dock)
         return dock
+    
+    def open_image_files(self):
+        """Show file dialog to open image files."""
+        file_names, _ = QFileDialog.getOpenFileNames(
+            parent=self, 
+            caption="Open Image(s)",
+            filter="Images (*.jpg *.jpeg *.png *.gif *.bmp *.tiff *.tif)"
+        )
+        file_paths = [Path(s) for s in file_names]
+        self.image_panel.add_images(file_paths)
+
+    def open_settings_file(self):
+        """Show file dialog to open settings file."""
+        file_name, _ = QFileDialog.getOpenFileName(
+            parent=self, 
+            caption="Open Settings",
+            filter="SNPG Files (*.snpg)",
+            selectedFilter="SNPG Files (*.snpg)"
+        )
+        state, valid = load_state(path=Path(file_name))
+        if valid:
+            self.settings_panel.set_settings(state.settings)
+
+    def save_settings_to_file(self):
+        """Show file dialog to save settings to a file."""
+        formatted_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name, _ = QFileDialog.getSaveFileName(
+            parent=self, 
+            caption="Save Settings",
+            dir=f"{formatted_datetime}.snpg",
+            filter="SNPG Files (*.snpg)",
+            selectedFilter="SNPG Files (*.snpg)"
+        )
+        if file_name:
+            write_state(self.get_app_state(), Path(file_name))
 
     def refresh_style(self, theme: str):
         """Set the app style sheet according to the given theme."""
@@ -175,7 +216,7 @@ if __name__=="__main__":
     app = QApplication([])
 
     # Load state
-    app_state = load_state()
+    app_state, _ = load_state()
     app.setStyleSheet(get_style_sheet(app_state.view.theme))
 
     window = MainWindow(app_state)

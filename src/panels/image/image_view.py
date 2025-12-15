@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
     QWidget
 )
 
+from panels.image.image_panel import ImagePanel, Mode
+
 import numpy.typing as npt
 import numpy as np
 
@@ -19,8 +21,9 @@ class ImageView(QWidget):
 
     mouse_pressed = Signal(QMouseEvent)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent: ImagePanel):
         super().__init__(parent)
+        self.image_panel = parent
         self._pixmap: QPixmap | None = None
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.update()
@@ -42,7 +45,7 @@ class ImageView(QWidget):
         painter.fillRect(self.rect(), self.palette().window())
 
         # no image
-        if not self._pixmap:
+        if self._pixmap == None or self.image_panel.mode == Mode.NO_IMAGE:
             painter.setPen(self.palette().text().color())
             painter.setFont(self.font())
 

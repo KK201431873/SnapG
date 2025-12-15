@@ -25,16 +25,8 @@ class Mode(Enum):
     TUNE = 1
     REVIEW = 2
 
-class PathModeWrapper(BaseModel):
-    """Wrapper class for `ImagePanel` that contains a Path and a Mode."""
-    path: Path | None
-    mode: Mode
-
 class ImagePanel(QWidget):
     """Central image viewer and contour selector."""
-    
-    current_file_changed = Signal(PathModeWrapper)
-    """Emits the currently selected file's `Path`."""
 
     def __init__(self, app_state: AppState):
         super().__init__()
@@ -59,14 +51,6 @@ class ImagePanel(QWidget):
         if len(filtered_paths) > 0:
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
-    
-    def _clear_current_file(self):
-        """Clears the current file and sets mode to `NO_IMAGE`."""
-        self.current_file = None
-        self.mode = Mode.NO_IMAGE
-        self.current_file_changed.emit(
-            PathModeWrapper(path=self.current_file, mode=self.mode)
-        )
     
     def _set_current_file(self, 
                           file_path: Path, 
@@ -97,9 +81,6 @@ class ImagePanel(QWidget):
         
         # update state
         self.current_file = file_path
-        self.current_file_changed.emit(
-            PathModeWrapper(path=self.current_file, mode=self.mode)
-        )
         return True
 
     def _validate_image_file(self, image_path: Path) -> bool:
@@ -109,7 +90,7 @@ class ImagePanel(QWidget):
             valid (bool): The image file's validity.
         """
         image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif'}
-        if not image_path.is_file() or image_path.suffix.lower() in image_extensions:
+        if not image_path.is_file() or image_path.suffix.lower() not in image_extensions:
             QMessageBox(
                 QMessageBox.Icon.Warning,
                 "Invalid or Missing File", 
@@ -120,3 +101,6 @@ class ImagePanel(QWidget):
             return False
         return True
     
+    def update_image(self):
+        """Updates this panel's `ImageView` using the current file."""
+        

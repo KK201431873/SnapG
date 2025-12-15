@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
 from panels.settings.scale_parameter import ScaleParameter
 from panels.settings.bool_parameter import BoolParameter
 from panels.settings.slider_parameter import SliderParameter
-from panels.image.image_panel import PathModeWrapper, Mode
 
 from models import AppState, Settings
 
@@ -94,6 +93,21 @@ class SettingsPanel(QWidget):
     def emit_fields(self):
         """Emits custom signal containing all settings fields."""
         self.settings_changed.emit(self.to_settings())
+
+    def set_settings(self, settings: Settings):
+        """Set current parameter values to the given settings."""
+        self.scale_prm_widget.get_field_widget().setText(str(settings.scale))
+        self.scale_prm_widget.get_combo_box_widget().setCurrentText(settings.scale_units)
+        self.show_orig_prm_widget.get_checkbox().setChecked(settings.show_original)
+        self.show_thresh_prm_widget.get_checkbox().setChecked(settings.show_threshold)
+        self.thresh_prm_widget.get_spin_box().setValue(settings.threshold)
+        self.radius_prm_widget.get_spin_box().setValue(settings.radius)
+        self.dilate_prm_widget.get_spin_box().setValue(settings.dilate)
+        self.erode_prm_widget.get_spin_box().setValue(settings.erode)
+        self.min_size_prm_widget.get_spin_box().setValue(settings.min_size)
+        self.max_size_prm_widget.get_spin_box().setValue(settings.max_size)
+        self.convexity_prm_widget.get_spin_box().setValue(settings.convexity) # type: ignore
+        self.circularity_prm_widget.get_spin_box().setValue(settings.circularity) # type: ignore
     
     def to_settings(self) -> Settings:
         """Return all current field values as a `Settings` object."""

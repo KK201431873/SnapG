@@ -39,8 +39,17 @@ class MenuBar(QMenuBar):
     output_visible_changed = Signal(bool)
     """Emits `OutputPanel`'s visibility."""
 
-    reset_view = Signal()
+    reset_view_triggered = Signal()
     """Emits when user requests reset view."""
+
+    open_settings_triggered = Signal()
+    """Emits when the user requests to open a settings file."""
+
+    open_images_triggered = Signal()
+    """Emits when the user requests to open image files."""
+
+    save_settings_triggered = Signal()
+    """Emits when the user requests to save the current settings."""
 
     def __init__(self, 
                  app_state: AppState,
@@ -65,17 +74,23 @@ class MenuBar(QMenuBar):
         open_file_menu = file_menu.addMenu("Open...")
 
         open_settings_action = QAction("Settings file", self)
-        open_tif_action = QAction("TIF/TIFF file(s)", self)
+        open_settings_action.triggered.connect(self.open_settings_triggered.emit)
+
+        open_image_action = QAction("Image file(s)", self)
+        open_image_action.triggered.connect(self.open_images_triggered.emit)
+        
         open_pkl_action = QAction("Annotated PKL file(s)", self)
         open_file_menu.addActions([
             open_settings_action, 
-            open_tif_action, 
+            open_image_action, 
             open_pkl_action
         ])
 
         save_file_menu = file_menu.addMenu("Save...")
 
         save_settings_action = QAction("Current settings", self)
+        save_settings_action.triggered.connect(self.save_settings_triggered.emit)
+
         save_image_view_action = QAction("Current image view", self)
         save_file_menu.addActions([
             save_settings_action, 
@@ -142,7 +157,7 @@ class MenuBar(QMenuBar):
         # reset view
         view_menu.addSeparator()
         self.reset_view_action = QAction("Reset View", self)
-        self.reset_view_action.triggered.connect(self.reset_view.emit)
+        self.reset_view_action.triggered.connect(self.reset_view_triggered.emit)
         view_menu.addAction(self.reset_view_action)
     
     def _update_process_visibility(self, toggle: bool = False):
