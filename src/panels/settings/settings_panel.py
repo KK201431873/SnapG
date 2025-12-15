@@ -39,6 +39,7 @@ class SettingsPanel(QWidget):
         self.scale_prm_widget = ScaleParameter(settings.scale, settings.scale_units)
         self.scale_prm_widget.get_field_widget().textChanged.connect(self.emit_fields)
         self.scale_prm_widget.get_combo_box_widget().activated.connect(self.emit_fields)
+        self.res_divisor_prm_widget = self.new_param("Image Res. Divisor", settings.resolution_divisor, 0.01, (0, 10))
 
         self.show_orig_prm_widget = BoolParameter("Show Original", settings.show_original)
         self.show_orig_prm_widget.get_checkbox().stateChanged.connect(self.emit_fields)
@@ -50,13 +51,15 @@ class SettingsPanel(QWidget):
         self.radius_prm_widget = self.new_param("Radius", settings.radius, 1, (0, 20))
         self.dilate_prm_widget = self.new_param("Dilate", settings.dilate, 1, (0, 50))
         self.erode_prm_widget = self.new_param("Erode", settings.erode, 1, (0, 50))
-        self.min_size_prm_widget = self.new_param("Min size", settings.min_size, 1000, (0, 200000))
-        self.max_size_prm_widget = self.new_param("Max size", settings.max_size, 1000, (0, 1000000))
+        self.min_size_prm_widget = self.new_param("Min size", settings.min_size, 1_000, (0, 200_000))
+        self.max_size_prm_widget = self.new_param("Max size", settings.max_size, 1_000, (0, 1_000_000))
         self.convexity_prm_widget = self.new_param("Convexity", settings.convexity, 0.01, (0, 1))
         self.circularity_prm_widget = self.new_param("Circularity", settings.circularity, 0.01, (0, 1))
+        self.thick_percent_prm_widget = self.new_param("Thickness %ile", settings.thickness_percentile, 1, (0, 100))
         
         # show visually
         self.vlayout.addWidget(self.scale_prm_widget)
+        self.vlayout.addWidget(self.res_divisor_prm_widget)
         self.vlayout.addWidget(self.show_orig_prm_widget)
         self.vlayout.addWidget(self.show_thresh_prm_widget)
         self.vlayout.addWidget(self.thresh_prm_widget)
@@ -67,6 +70,7 @@ class SettingsPanel(QWidget):
         self.vlayout.addWidget(self.max_size_prm_widget)
         self.vlayout.addWidget(self.convexity_prm_widget)
         self.vlayout.addWidget(self.circularity_prm_widget)
+        self.vlayout.addWidget(self.thick_percent_prm_widget)
         
         # add layout to current widget
         self.setLayout(self.vlayout)
@@ -98,6 +102,7 @@ class SettingsPanel(QWidget):
         """Set current parameter values to the given settings."""
         self.scale_prm_widget.get_field_widget().setText(str(settings.scale))
         self.scale_prm_widget.get_combo_box_widget().setCurrentText(settings.scale_units)
+        self.res_divisor_prm_widget.get_spin_box().setValue(settings.resolution_divisor) # type: ignore
         self.show_orig_prm_widget.get_checkbox().setChecked(settings.show_original)
         self.show_thresh_prm_widget.get_checkbox().setChecked(settings.show_threshold)
         self.thresh_prm_widget.get_spin_box().setValue(settings.threshold)
@@ -108,12 +113,14 @@ class SettingsPanel(QWidget):
         self.max_size_prm_widget.get_spin_box().setValue(settings.max_size)
         self.convexity_prm_widget.get_spin_box().setValue(settings.convexity) # type: ignore
         self.circularity_prm_widget.get_spin_box().setValue(settings.circularity) # type: ignore
+        self.thick_percent_prm_widget.get_spin_box().setValue(settings.thickness_percentile)
     
     def to_settings(self) -> Settings:
         """Return all current field values as a `Settings` object."""
         return Settings(
             scale = float(self.scale_prm_widget.get_field_widget().text()),
             scale_units = self.scale_prm_widget.get_combo_box_widget().currentText(),
+            resolution_divisor=self.res_divisor_prm_widget.get_spin_box().value(),
             show_original = self.show_orig_prm_widget.get_checkbox().isChecked(),
             show_threshold = self.show_thresh_prm_widget.get_checkbox().isChecked(),
             threshold = int(self.thresh_prm_widget.get_spin_box().value()),
@@ -123,7 +130,8 @@ class SettingsPanel(QWidget):
             min_size = int(self.min_size_prm_widget.get_spin_box().value()),
             max_size = int(self.max_size_prm_widget.get_spin_box().value()),
             convexity = self.convexity_prm_widget.get_spin_box().value(),
-            circularity = self.circularity_prm_widget.get_spin_box().value()
+            circularity = self.circularity_prm_widget.get_spin_box().value(),
+            thickness_percentile = int(self.thick_percent_prm_widget.get_spin_box().value())
         )
         
     def receive_settings(self, settings: Settings):

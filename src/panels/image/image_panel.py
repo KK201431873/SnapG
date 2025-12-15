@@ -14,11 +14,14 @@ from PySide6.QtWidgets import (
 
 from panels.image.image_view import ImageView
 
-from models import AppState
+from models import AppState, SegmentationData, ContourData, ImagePanelState
 
-from pydantic import BaseModel
 from pathlib import Path
 from enum import Enum
+import numpy.typing as npt
+import numpy as np
+import pickle
+import cv2
 
 class Mode(Enum):
     NO_IMAGE = 0
@@ -32,22 +35,28 @@ class ImagePanel(QWidget):
         super().__init__()
         
         # init files lists and state
-        self.image_files: list[Path] = []
-        self.pkl_files: list[Path] = []
-        self.current_file: Path | None = None
-        self.mode: Mode = Mode.NO_IMAGE
+        self.image_files: list[Path] = [Path(p) for p in app_state.image_panel_state.image_files]
+        self.seg_files: list[Path] = [Path(p) for p in app_state.image_panel_state.seg_files]
+        current_file_str = app_state.image_panel_state.current_file
+        self.current_file: Path | None = Path(current_file_str) if current_file_str != "" else None
+        self.current_image: npt.NDArray | None = None
+        self.current_seg_data: SegmentationData | None = None
+        self.mode: Mode = Mode(app_state.image_panel_state.mode)
 
         # layout
         vlayout = QVBoxLayout(self)
         vlayout.setContentsMargins(0, 0, 0, 0)
         
         # image view
-        self.image_view = ImageView(self)
+        self.image_view = ImageView(self, app_state)
         vlayout.addWidget(self.image_view)
+
+        # sync other states
+        self.update_image()
     
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
-        filtered_paths = [p for p in image_paths if self._validate_image_file(p)]
+        filtered_paths = [p for p in image_paths if self._validate_file(p)]
         if len(filtered_paths) > 0:
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
@@ -61,12 +70,12 @@ class ImagePanel(QWidget):
         Returns
             kept (bool): Whether the file was kept.
         """
-        valid = self._validate_image_file(file_path)
+        valid = self._validate_file(file_path)
         if not valid:
             if file_path in self.image_files:
                 self.image_files.remove(file_path)
-            if file_path in self.pkl_files:
-                self.pkl_files.remove(file_path)
+            if file_path in self.seg_files:
+                self.seg_files.remove(file_path)
             return False
         
         # update lists
@@ -75,32 +84,119 @@ class ImagePanel(QWidget):
                 self.image_files.append(file_path)
             self.mode = Mode.TUNE
         else:
-            if file_path not in self.pkl_files:
-                self.pkl_files.append(file_path)
+            if file_path not in self.seg_files:
+                self.seg_files.append(file_path)
             self.mode = Mode.REVIEW
         
         # update state
         self.current_file = file_path
+        self.update_image()
         return True
 
-    def _validate_image_file(self, image_path: Path) -> bool:
+    def _validate_file(self, file_path: Path) -> bool:
         """
-        Check if the given image file is valid.
+        Check if the given image or .SEG file is valid.
         Returns:
-            valid (bool): The image file's validity.
+            valid (bool): The file's validity.
         """
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif'}
-        if not image_path.is_file() or image_path.suffix.lower() not in image_extensions:
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.seg'}
+        valid = file_path.is_file() and file_path.suffix.lower() in image_extensions
+        if valid and file_path.suffix.lower() == ".seg":
+            # Try reading the .SEG file
+            seg_data = self._get_segmentation_data(file_path)
+            valid &= seg_data != None
+        # notify user if not valid
+        if not valid:
             QMessageBox(
                 QMessageBox.Icon.Warning,
                 "Invalid or Missing File", 
-                f"File {image_path.absolute()} either does not exit or is not one of the following image types: '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif'.",
+                f"File {file_path.absolute()} is either corrupt, does not exist, or is not one of the following file types: '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.seg'.",
                 QMessageBox.StandardButton.Ok,
                 self
             ).exec()
-            return False
-        return True
+        return valid
+    
+    def _get_segmentation_data(self, file_path: Path) -> SegmentationData | None:
+        """
+        Attempts to extract segmentation data from the given .SEG file.
+        Returns:
+            segmentation_data (SegmentationData | None): data, if the file is valid, otherwise `None`.
+        """ 
+        try:
+            with open(file_path, "rb") as f:
+                file_data = pickle.load(f)
+            data = [item[1] for item in file_data.items()]
+            # expected data
+            img_filename: str = data[0]
+            image: npt.NDArray = data[1]
+            resolution_divisor: float = data[2]
+            contour_data_raw: list[tuple[
+                int, # ID
+                npt.NDArray, # inner_contour
+                npt.NDArray, # outer_contour
+                float, # g_ratio
+                float, # circularity
+                float, # thickness
+                float, # inner_diameter
+                float # outer_diameter
+            ]] = data[3]
+            selected_states: list[bool] = data[4]
+            # process contour_data_raw
+            contour_data: list[ContourData] = []
+            for ID, inner_contour, outer_contour, g_ratio, circularity, thickness, inner_diameter, outer_diameter in contour_data_raw:
+                contour_data.append(ContourData(
+                    ID=ID,
+                    inner_contour=inner_contour,
+                    outer_contour=outer_contour,
+                    g_ratio=g_ratio,
+                    circularity=circularity,
+                    thickness=thickness,
+                    inner_diameter=inner_diameter,
+                    outer_diameter=outer_diameter
+                ))
+            return SegmentationData(
+                img_filename=img_filename,
+                image=image,
+                resolution_divisor=resolution_divisor,
+                contour_data=contour_data,
+                selected_states=selected_states
+            )
+        except Exception as e:
+            return None
     
     def update_image(self):
         """Updates this panel's `ImageView` using the current file."""
+        if self.current_file is None:
+            return
         
+        # retrieve image
+        if self.mode == Mode.TUNE:
+            self.current_image = cv2.imread(str(self.current_file))
+        elif self.mode == Mode.REVIEW:
+            self.current_seg_data = self._get_segmentation_data(self.current_file)
+            if self.current_seg_data is not None:
+                self.current_image = self.current_seg_data.image
+
+        # set image
+        if self.current_image is None:
+            return
+        self.image_view.set_image(self.current_image)
+    
+    def set_image_view(self, image_panel_state: ImagePanelState):
+        """Set the center position and zoom of the `ImageView` to the given values."""
+        self.image_view.set_center_zoom(
+            image_panel_state.view_center_point, 
+            image_panel_state.view_image_width
+        )
+    
+    def to_state(self) -> ImagePanelState:
+        """Return all current fields as an `ImagePanelState` object."""
+        return ImagePanelState(
+            image_files=[str(p) for p in self.image_files],
+            seg_files=[str(p) for p in self.seg_files],
+            current_file=str(self.current_file) if self.current_file is not None else "",
+            mode=self.mode.value,
+            view_center_point=self.image_view.get_center_point(),
+            view_image_width=self.image_view.get_image_width()
+        )
+    

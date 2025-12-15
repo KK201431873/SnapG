@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+import numpy.typing as npt
+import numpy as np
 
 class View(BaseModel):
     """Data class to store view options."""
@@ -64,6 +66,9 @@ class Settings(BaseModel):
     scale_units: str
     """Unit of distance per pixel (either `µm` or `nm`)."""
 
+    resolution_divisor: float
+    """Factor to shrink the resolution of the image by before processing."""
+
     show_original: bool
     """Show the original image or not."""
 
@@ -71,7 +76,7 @@ class Settings(BaseModel):
     """Show the thresholded or annotated image (overridden by show_original)."""
 
     threshold: int
-    """Grayscale to binary threshold."""
+    """Grayscale to binary threshold (between `0` and `255`)."""
 
     radius: int
     """Smoothing kernel radius."""
@@ -94,12 +99,16 @@ class Settings(BaseModel):
     circularity: float
     """Circularity percentage threshold (between `0.0` and `1.0`)."""
 
+    thickness_percentile: int
+    """Percentile used to extract myelin thickness data from a thickness distribution."""
+
     @staticmethod
     def from_dict(settings_dict: dict) -> 'Settings':
         """Load a `Settings` object from the given dictionary."""
         return Settings(
             scale=settings_dict['scale'],
             scale_units=settings_dict['scale_units'],
+            resolution_divisor=settings_dict['resolution_divisor'],
             show_original=settings_dict['show_original'],
             show_threshold=settings_dict['show_threshold'],
             threshold=settings_dict['threshold'],
@@ -109,30 +118,82 @@ class Settings(BaseModel):
             min_size=settings_dict['min_size'],
             max_size=settings_dict['max_size'],
             convexity=settings_dict['convexity'],
-            circularity=settings_dict['circularity']
+            circularity=settings_dict['circularity'],
+            thickness_percentile=settings_dict['thickness_percentile']
         )
     
     @staticmethod
     def default() -> 'Settings':
         """Return the default `Settings` options."""
         return Settings(
-            scale=0.0,
-            scale_units="µm",
+            scale=1.0,
+            scale_units="nm",
+            resolution_divisor=3.0,
             show_original=True,
-            show_threshold=False,
-            threshold=0,
+            show_threshold=True,
+            threshold=127,
             radius=0,
             dilate=0,
             erode=0,
-            min_size=0,
-            max_size=0,
+            min_size=10_000,
+            max_size=1_000_000,
             convexity=0.0,
-            circularity=0.0
+            circularity=0.0,
+            thickness_percentile=30
+        )
+
+
+class ImagePanelState(BaseModel):
+    """Data class to store the state of `ImagePanel`. **NOTE:** Non-primitive objects were converted for serialization. They must be converted back."""
+
+    image_files: list[str]
+    """List of loaded image files. **NOTE:** `Path` objects were converted to `str`s for serialization. They must be converted back."""
+
+    seg_files: list[str]
+    """List of loaded segmentation files. **NOTE:** `Path` objects were converted to `str`s for serialization. They must be converted back."""
+
+    current_file: str
+    """Currently displayed file. **NOTE:** `Path` was converted to `str` for serialization. It must be converted back."""
+
+    mode: int
+    """Current image viewing mode. **NOTE:** `image_panel.Mode` was converted to `int` for serialization. It must be converted back."""
+
+    #NOTE: Not including current_image and current_seg_data here because the types get too clunky. Use ImagePanel.update_image()
+
+    view_center_point: tuple[int, int]
+    """Center point of the image in `ImageView`."""
+
+    view_image_width: int
+    """Width (i.e. zoom amount) of the image in `ImageView`."""
+
+    @staticmethod
+    def from_dict(image_panel_state_dict: dict) -> 'ImagePanelState':
+        """Load a `ImagePanelState` object from the given dictionary."""
+        return ImagePanelState(
+            image_files=image_panel_state_dict['image_files'],
+            seg_files=image_panel_state_dict['seg_files'],
+            current_file=image_panel_state_dict['current_file'],
+            mode=image_panel_state_dict['mode'],
+            view_center_point=image_panel_state_dict['view_center_point'],
+            view_image_width=image_panel_state_dict['view_image_width']
+        )
+    
+    @staticmethod
+    def default() -> 'ImagePanelState':
+        """Return the default `ImagePanelState` options."""
+        return ImagePanelState(
+            image_files=[],
+            seg_files=[],
+            current_file="",
+            mode=0,
+            view_center_point=(0,-120),
+            view_image_width=300
         )
 
 
 class AppState(BaseModel):
     """Wrapper data class containing all app options."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     view: View
     """View options."""
@@ -140,12 +201,16 @@ class AppState(BaseModel):
     settings: Settings
     """Segmentation settings."""
 
+    image_panel_state: ImagePanelState
+    """`ImagePanel` state."""
+
     @staticmethod
     def from_dict(app_state_dict: dict) -> 'AppState':
         """Load an `AppState` object from the given dictionary."""
         return AppState(
             view=View.from_dict(app_state_dict['view']),
-            settings=Settings.from_dict(app_state_dict['settings'])
+            settings=Settings.from_dict(app_state_dict['settings']),
+            image_panel_state=ImagePanelState.from_dict(app_state_dict['image_panel_state'])
         )
     
     @staticmethod
@@ -153,5 +218,55 @@ class AppState(BaseModel):
         """Return the default `AppState` options."""
         return AppState(
             view=View.default(),
-            settings=Settings.default()
+            settings=Settings.default(),
+            image_panel_state=ImagePanelState.default()
         )
+
+
+# == imgproc stuff ==
+class ContourData(BaseModel):
+    """Cotainer class for the data representing one axon contour in a segmented image."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    ID: int
+    """Axon ID."""
+
+    inner_contour: npt.NDArray[np.int32]
+    """Myelin inner contour."""
+
+    outer_contour: npt.NDArray[np.int32]
+    """Myelin outer contour."""
+
+    g_ratio: float
+    """Myelin G-ratio."""
+
+    circularity: float
+    """Inner contour circularity."""
+
+    thickness: float
+    """Myelin thickness."""
+
+    inner_diameter: float
+    """Inner myelin diameter."""
+
+    outer_diameter: float
+    """Outer myelin diameter."""
+
+class SegmentationData(BaseModel):
+    """Container class for segmentation data (i.e. data stored in a .seg file)."""
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    img_filename: str
+    """File name of the segmented image."""
+
+    image: npt.NDArray
+    """Image object."""
+
+    resolution_divisor: float
+    """How much the resolution of the image was shrunk by for processing."""
+
+    contour_data: list[ContourData]
+    """List of `ContourData` objects for each axon."""
+
+    selected_states: list[bool]
+    """List of toggle states for each axon."""

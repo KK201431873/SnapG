@@ -58,7 +58,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(empty_central)
         self.image_panel.setParent(empty_central)
         self.image_panel.lower()
-        self.image_panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        # self.image_panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         # resize events
         empty_central.installEventFilter(self)
         self._central = empty_central
@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.get_exit_action().triggered.connect(self.close)
         # View signals
         self.menu_bar.theme_changed.connect(self.refresh_style)
-        self.menu_bar.reset_view_triggered.connect(lambda: self.set_dock_state(View.default()))
+        self.menu_bar.reset_view_triggered.connect(self.reset_view)
         self.menu_bar.process_visible_changed.connect(self.process_dock.setVisible)
         self.menu_bar.settings_visible_changed.connect(self.settings_dock.setVisible)
         self.menu_bar.output_visible_changed.connect(self.output_dock.setVisible)
@@ -174,6 +174,12 @@ class MainWindow(QMainWindow):
         """Set the app style sheet according to the given theme."""
         app.setStyleSheet(get_style_sheet(theme))
 
+    def reset_view(self):
+        """Reset docks and image panel view to defaults."""
+        default_state = AppState.default()
+        self.set_dock_state(default_state.view)
+        self.image_panel.set_image_view(default_state.image_panel_state)
+
     def set_dock_state(self, view: View):
         """Set docks to the given view."""
         # visibilities
@@ -199,15 +205,16 @@ class MainWindow(QMainWindow):
             view=View(
                 theme=self.menu_bar.get_theme(),
 
-                process_panel_visible=self.process_panel.isVisible(),
-                settings_panel_visible=self.settings_panel.isVisible(),
-                output_panel_visible=self.output_panel.isVisible(),
+                process_panel_visible=self.process_dock.isVisible(),
+                settings_panel_visible=self.settings_dock.isVisible(),
+                output_panel_visible=self.output_dock.isVisible(),
 
-                process_panel_width=self.process_panel.width(),
-                settings_panel_width=self.settings_panel.width(),
-                output_panel_height=self.output_panel.height()
+                process_panel_width=self.process_dock.width(),
+                settings_panel_width=self.settings_dock.width(),
+                output_panel_height=self.output_dock.height()
             ),
-            settings=self.settings_panel.to_settings()
+            settings=self.settings_panel.to_settings(),
+            image_panel_state=self.image_panel.to_state()
         )
 
         

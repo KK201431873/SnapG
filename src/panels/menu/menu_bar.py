@@ -79,11 +79,11 @@ class MenuBar(QMenuBar):
         open_image_action = QAction("Image file(s)", self)
         open_image_action.triggered.connect(self.open_images_triggered.emit)
         
-        open_pkl_action = QAction("Annotated PKL file(s)", self)
+        open_seg_action = QAction("Segmentation file(s)", self)
         open_file_menu.addActions([
             open_settings_action, 
             open_image_action, 
-            open_pkl_action
+            open_seg_action
         ])
 
         save_file_menu = file_menu.addMenu("Save...")
