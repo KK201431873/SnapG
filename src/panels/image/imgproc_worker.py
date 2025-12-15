@@ -12,12 +12,14 @@ from imgproc.process_image import process_image
 from models import Settings
 
 import numpy as np
+import traceback
 import cv2
 
 
 class ImgProcWorker(QObject):
     finished = Signal(object, object) # image, segmentation data
     error = Signal(str)
+    processingChanged = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -45,9 +47,16 @@ class ImgProcWorker(QObject):
             settings = self._settings
             self._has_job = False
             self._mutex.unlock()
+            
+            # Tell ImagePanel processing has started
+            self.processingChanged.emit(True)
 
-            if image is not None and settings is not None:
-                self._process(image, settings)
+            try:
+                if image is not None and settings is not None:
+                    self._process(image, settings)
+            finally:
+                # finish processing message
+                self.processingChanged.emit(False)
 
     def enqueue(self, image, settings):
         self._mutex.lock()
@@ -105,4 +114,6 @@ class ImgProcWorker(QObject):
             self.finished.emit(result, seg_data)
 
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(traceback.format_exc())
+            traceback.print_exc()
+            

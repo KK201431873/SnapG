@@ -10,7 +10,9 @@ from PySide6.QtGui import (
     QImage,
     QMouseEvent,
     QWheelEvent,
-    QGuiApplication
+    QGuiApplication,
+    QFont,
+    QFontMetrics
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -37,6 +39,7 @@ class ImageView(QWidget):
         self.scaled_pixmap: QPixmap | None = None
         self.center_point: tuple[int, int] = app_state.image_panel_state.view_center_point
         self.image_width: int = app_state.image_panel_state.view_image_width
+        self._processing: bool = False
 
         # user control state
         self.drag_start_position: QPoint | None = None
@@ -66,6 +69,11 @@ class ImageView(QWidget):
         """Clears the current image and displays \"No Image Selected\"."""
         self.pixmap = None
         self._update_scaled_pixmap()
+        self.update()
+    
+    def set_processing(self, active: bool):
+        """Update state of processing indicator."""
+        self._processing = active
         self.update()
 
     def paintEvent(self, event):
@@ -99,6 +107,38 @@ class ImageView(QWidget):
             self.scaled_pixmap,
             self.scaled_pixmap.rect()
         )
+
+        # processing status indicator
+        if self._processing:
+            font = QFont("Arial", 30)
+            text = "Processing…"
+            bbox = QFontMetrics(font).boundingRect(text)
+            bb_w, bb_h = bbox.size().toTuple()
+
+            margin = 20
+            painter.setOpacity(0.4)
+            painter.fillRect(
+                QRect(
+                    QPoint(
+                        scrn_w // 2 - bb_w // 2 - margin,
+                        scrn_h // 2 - bb_h // 2 - margin
+                    ),
+                    QPoint(
+                        scrn_w // 2 + bb_w // 2 + margin,
+                        scrn_h // 2 + bb_h // 2 + margin
+                    )
+                ), 
+                Qt.GlobalColor.black
+            )
+
+            painter.setOpacity(1.0)
+            painter.setFont(font)
+            painter.setPen(Qt.GlobalColor.white)
+            painter.drawText(
+                self.rect(),
+                Qt.AlignmentFlag.AlignCenter,
+                text
+            )
     
     def _update_scaled_pixmap(self):
         """Creates and caches a resized pixmap based on user-controlled zoom."""

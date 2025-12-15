@@ -3,7 +3,8 @@ from PySide6.QtCore import (
     Signal,
     QThread,
     Qt,
-    QTimer
+    QTimer,
+    Slot
 )
 from PySide6.QtGui import (
     QImage
@@ -76,6 +77,9 @@ class ImagePanel(QWidget):
         self.processing_thread = QThread(self)
         self.worker = ImgProcWorker()
         self.worker.moveToThread(self.processing_thread)
+        # processing status indicator
+        self.worker.processingChanged.connect(self._on_processing_changed)
+        self.processing = False
         # start and receive signals
         self.enqueue_process.connect(self.worker.enqueue)
         self.worker.finished.connect(self._on_processing_finished)
@@ -254,6 +258,12 @@ class ImagePanel(QWidget):
             self.current_original_image,
             self.settings
         )
+    
+    @Slot(bool)
+    def _on_processing_changed(self, active: bool):
+        """Update processing status indicator."""
+        self.processing = active
+        self.image_view.set_processing(active)
 
     def _on_processing_finished(self, image: np.ndarray, seg_data):
         """Receive worker thread results and set display image."""

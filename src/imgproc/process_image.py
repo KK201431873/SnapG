@@ -233,8 +233,10 @@ def process_image(
 
         # Thickness estimation
         nonzero_vals = distance_samples[distance_samples > 0]
-        n = 2 * len(contour)
+        if nonzero_vals.size == 0:
+            continue
 
+        n = 2 * len(contour)
         if len(nonzero_vals) < n:
             smallest = nonzero_vals
         else:
