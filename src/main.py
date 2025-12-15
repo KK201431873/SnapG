@@ -68,10 +68,6 @@ class MainWindow(QMainWindow):
         # load in previous dock state
         self.set_dock_state(app_state.view)
 
-        # connect image panel signals
-        self.image_panel.current_file_changed.connect(self.settings_panel.receive_current_file_changed)
-        self.image_panel._clear_current_file()
-
         # -- Menu bar --
         self.menu_bar = MenuBar(
             app_state,
