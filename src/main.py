@@ -15,7 +15,8 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QFrame,
     QMessageBox,
-    QApplication
+    QApplication,
+    QStyle
 )
 
 from panels.image.image_panel import ImagePanel
@@ -43,7 +44,7 @@ class MainWindow(QMainWindow):
     def __init__(self, app_state: AppState):
         super().__init__()
         
-        # Init panels
+        # -- Init panels --
         self.image_panel = ImagePanel(app_state)
         self.process_panel = ProcessPanel(app_state)
         self.settings_panel = SettingsPanel(app_state)
@@ -64,11 +65,14 @@ class MainWindow(QMainWindow):
         self.process_dock = self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
         self.settings_dock = self.create_fixed_dock("Segmentation Settings", self.settings_panel, Qt.DockWidgetArea.RightDockWidgetArea, scrollable=True)
         self.output_dock = self.create_fixed_dock("Output", self.output_panel, Qt.DockWidgetArea.BottomDockWidgetArea)
-
         # load in previous dock state
         self.set_dock_state(app_state.view)
 
-        # Menu bar
+        # connect image panel signals
+        self.image_panel.current_file_changed.connect(self.settings_panel.receive_current_file_changed)
+        self.image_panel._clear_current_file()
+
+        # -- Menu bar --
         self.menu_bar = MenuBar(
             app_state,
             self.image_panel,
@@ -94,7 +98,8 @@ class MainWindow(QMainWindow):
     def _resize_image_panel(self):
         menu_height = self.menuBar().height() if self.menuBar() else 0
 
-        x_offset = -self.process_dock.width() if self.process_dock.isVisible() else 4
+        x_offset = -self.process_dock.width() if self.process_dock.isVisible() else \
+                    self.style().pixelMetric(QStyle.PixelMetric.PM_SplitterWidth) - 1
         self.image_panel.setGeometry(
             x_offset,
             menu_height,

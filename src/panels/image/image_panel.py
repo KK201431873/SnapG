@@ -16,6 +16,7 @@ from panels.image.image_view import ImageView
 
 from models import AppState
 
+from pydantic import BaseModel
 from pathlib import Path
 from enum import Enum
 
@@ -24,10 +25,15 @@ class Mode(Enum):
     TUNE = 1
     REVIEW = 2
 
+class PathModeWrapper(BaseModel):
+    """Wrapper class for `ImagePanel` that contains a Path and a Mode."""
+    path: Path | None
+    mode: Mode
+
 class ImagePanel(QWidget):
     """Central image viewer and contour selector."""
     
-    current_file_changed = Signal(Path)
+    current_file_changed = Signal(PathModeWrapper)
     """Emits the currently selected file's `Path`."""
 
     def __init__(self, app_state: AppState):
@@ -49,24 +55,27 @@ class ImagePanel(QWidget):
     
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
-        last_kept_image: Path | None = None
-        for image_path in image_paths:
-            kept = self._set_current_file(image_path, is_image=True, emit_signal=False)
-            if kept:
-                last_kept_image = image_path
-        # Emit for very last valid image
-        if last_kept_image is not None:
-            self.current_file_changed.emit(self.current_file)
+        filtered_paths = [p for p in image_paths if self._validate_image_file(p)]
+        if len(filtered_paths) > 0:
+            self.image_files += filtered_paths
+            self._set_current_file(filtered_paths[-1], is_image=True)
+    
+    def _clear_current_file(self):
+        """Clears the current file and sets mode to `NO_IMAGE`."""
+        self.current_file = None
+        self.mode = Mode.NO_IMAGE
+        self.current_file_changed.emit(
+            PathModeWrapper(path=self.current_file, mode=self.mode)
+        )
     
     def _set_current_file(self, 
                           file_path: Path, 
-                          is_image: bool, 
-                          emit_signal: bool
+                          is_image: bool
         ) -> bool:
         """
         Attempts to set the currently viewed file and emits a signal.
         Returns
-            kept (bool): Whether the image was kept.
+            kept (bool): Whether the file was kept.
         """
         valid = self._validate_image_file(file_path)
         if not valid:
@@ -80,14 +89,17 @@ class ImagePanel(QWidget):
         if is_image:
             if file_path not in self.image_files:
                 self.image_files.append(file_path)
+            self.mode = Mode.TUNE
         else:
             if file_path not in self.pkl_files:
                 self.pkl_files.append(file_path)
+            self.mode = Mode.REVIEW
         
         # update state
         self.current_file = file_path
-        if emit_signal:
-            self.current_file_changed.emit(self.current_file)
+        self.current_file_changed.emit(
+            PathModeWrapper(path=self.current_file, mode=self.mode)
+        )
         return True
 
     def _validate_image_file(self, image_path: Path) -> bool:

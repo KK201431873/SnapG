@@ -14,7 +14,11 @@ from PySide6.QtWidgets import (
 from panels.settings.scale_parameter import ScaleParameter
 from panels.settings.bool_parameter import BoolParameter
 from panels.settings.slider_parameter import SliderParameter
+from panels.image.image_panel import PathModeWrapper, Mode
+
 from models import AppState, Settings
+
+from pathlib import Path
 
 class SettingsPanel(QWidget):
     """Adjustable fields for segmentation settings."""
@@ -109,7 +113,25 @@ class SettingsPanel(QWidget):
         )
         
     def receive_settings(self, settings: Settings):
+        """Logic for disabling/enabling Show Threshold checkbox."""
         if settings.show_original:
             self.show_thresh_prm_widget.setDisabled(True)
         else:
             self.show_thresh_prm_widget.setDisabled(False)
+    
+    def _show_parameters(self):
+        """Show all parameter fields, checkboxes, and sliders."""
+        for w in self.findChildren(QWidget):
+            w.setVisible(True)
+    
+    def _hide_parameters(self):
+        """Hide all parameter fields, checkboxes, and sliders."""
+        for w in self.findChildren(QWidget):
+            w.setVisible(False)
+
+    def receive_current_file_changed(self, path_and_mode: PathModeWrapper):
+        """Handle logic for showing/hiding parameters."""
+        if path_and_mode.mode == Mode.REVIEW or path_and_mode.mode == Mode.NO_IMAGE:
+            self._hide_parameters()
+        else:
+            self._show_parameters()
