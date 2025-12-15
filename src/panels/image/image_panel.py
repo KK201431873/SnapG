@@ -62,8 +62,10 @@ class ImagePanel(QWidget):
     
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
-        filtered_paths = [p for p in image_paths if self._validate_file(p)]
+        filtered_paths = list(set([p for p in image_paths if self._validate_file(p)])) # set to remove duplicates
         if len(filtered_paths) > 0:
+            for p in filtered_paths:
+                self.image_files.remove(p) # remove duplicates
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
             # request imgproc settings
@@ -127,7 +129,6 @@ class ImagePanel(QWidget):
     def receive_settings(self, settings: Settings):
         """Receive new settings and update image."""
         self.settings = settings
-        print('received settings')
         self.update_image()
     
     def _get_segmentation_data(self, file_path: Path) -> SegmentationData | None:

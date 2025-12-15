@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 import math
 from PIL import Image, ImageFont, ImageDraw
+from pathlib import Path
 
 def create_circular_kernel(radius):
     """Create a circular kernel mask"""
@@ -191,7 +192,7 @@ def process_image(
         distance_inner = cv2.distanceTransform(offset_mask, cv2.DIST_L2, maskSize=5)
         offset_mask_eroded = (distance_inner > thickness).astype(np.uint8) * 255
         inner_contour, _ = cv2.findContours(offset_mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        draw_scale = int(8*linear_correction_ratio)
+        draw_scale = int(8*input_image.shape[0]/4096)
 
         # Calculate g-ratio
         contour_perimeter = cv2.arcLength(inner_contour[0], True)
@@ -213,20 +214,28 @@ def process_image(
             cy = int(M["m01"] / M["m00"]-6*draw_scale)
             line_spacing = 14*draw_scale
             out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
-            font = ImageFont.truetype("__assets__/JetBrainsMono-Bold.ttf", int(15*draw_scale))
+            font_path = Path("assets/JetBrainsMono-Bold.ttf")
+            font = ImageFont.truetype(font_path, max(15,int(15*draw_scale)))
             draw = ImageDraw.Draw(out_pil)
 
+            # magic correction factors (i don't know if it works for images other than 4096px)
+            if input_image.shape[0] < 512:
+                x_correction_factor = 5*max(1, draw_scale)
+                y_correction = 10*max(1,line_spacing)
+            else:
+                x_correction_factor = 5*draw_scale
+                y_correction = 1/2*line_spacing
             def draw_white_id_text(dx,dy):
-                draw.text((int(cx-5*draw_scale*len(f"#{i+1}"))+dx, cy-1/2*line_spacing+dy), f"#{i+1}", font=font, fill=(255, 255, 255))
+                draw.text((int(cx-x_correction_factor*len(f"#{i+1}"))+dx, cy-y_correction+dy), f"#{i+1}", font=font, fill=(255, 255, 255))
             for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
                 draw_white_id_text(dx,dy)
-            draw.text((int(cx-5*draw_scale*len(f"#{i+1}")), cy-1/2*line_spacing), f"#{i+1}", font=font, fill=(0, 0, 0))
+            draw.text((int(cx-x_correction_factor*len(f"#{i+1}")), cy-y_correction), f"#{i+1}", font=font, fill=(0, 0, 0))
             inner_dia_text = f"ø{int(round(inner_diameter))}nm" if round(inner_diameter)<1000 else f"ø{inner_diameter/1000:.2f}μm"
             def draw_white_inner_dia_text(dx,dy):
-                draw.text((int(cx-5*draw_scale*len(inner_dia_text)+dx), cy+1/2*line_spacing+dy), inner_dia_text, font=font, fill=(255, 255, 255))
+                draw.text((int(cx-x_correction_factor*len(inner_dia_text)+dx), cy+y_correction+dy), inner_dia_text, font=font, fill=(255, 255, 255))
             for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
                 draw_white_inner_dia_text(dx,dy)
-            draw.text((int(cx-5*draw_scale*len(inner_dia_text)), cy+1/2*line_spacing), inner_dia_text, font=font, fill=(0, 0, 255))
+            draw.text((int(cx-x_correction_factor*len(inner_dia_text)), cy+y_correction), inner_dia_text, font=font, fill=(0, 0, 255))
 
             out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
             

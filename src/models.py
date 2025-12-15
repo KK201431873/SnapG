@@ -135,7 +135,7 @@ class Settings(BaseModel):
             radius=0,
             dilate=0,
             erode=0,
-            min_size=10_000,
+            min_size=0,
             max_size=1_000_000,
             convexity=0.0,
             circularity=0.0,
