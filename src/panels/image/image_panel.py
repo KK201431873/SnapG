@@ -99,7 +99,8 @@ class ImagePanel(QWidget):
         filtered_paths = list(set([p for p in image_paths if self._validate_file(p)])) # cvt to set to remove duplicates
         if len(filtered_paths) > 0:
             for p in filtered_paths:
-                self.image_files.remove(p) # remove existing duplicates
+                if p in self.image_files:
+                    self.image_files.remove(p) # remove existing duplicates
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
             # request imgproc settings
@@ -249,10 +250,6 @@ class ImagePanel(QWidget):
             return
 
         # enqueue image processing on worker thread
-        # self.enqueue_process.emit(
-        #     self.current_original_image,
-        #     self.settings
-        # )
         self.worker.enqueue(
             self.current_original_image,
             self.settings
@@ -289,9 +286,7 @@ class ImagePanel(QWidget):
     def closeEvent(self, event):
         if self.worker:
             self.worker.stop()
-
         self.processing_thread.quit()
-
         QTimer.singleShot(1000, self.processing_thread.wait)
         event.accept()
     

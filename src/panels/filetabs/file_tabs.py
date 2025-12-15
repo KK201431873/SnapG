@@ -40,6 +40,9 @@ class FileTabSelector(QTabWidget):
 
     def set_files(self, image_files: list[Path], seg_files: list[Path]):
         """Update the current file tabs with the given set of image and segmentation files."""
+        if None in image_files or None in seg_files:
+            return
+        
         _, paths = self._get_tabs_paths()
 
         # add new image paths
@@ -60,6 +63,9 @@ class FileTabSelector(QTabWidget):
 
     def set_current_file(self, current_file: Path):
         """Sets the currently selected file tab. Creates a new tab if `current_file` doesn't exist."""
+        if current_file is None:
+            return
+        
         _, paths = self._get_tabs_paths()
         if current_file not in paths:
             index = self._create_new_tab(current_file)
@@ -73,6 +79,9 @@ class FileTabSelector(QTabWidget):
         Returns:
             index (int): The new tab's index.
         """
+        if tab_path is None:
+            return -1
+        
         widget = PathWidget(tab_path)
         index = self.addTab(widget, tab_path.name)
         self.setTabToolTip(index, tab_path.name)

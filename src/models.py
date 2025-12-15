@@ -75,6 +75,9 @@ class Settings(BaseModel):
     show_threshold: bool
     """Show the thresholded or annotated image (overridden by show_original)."""
 
+    show_text: bool
+    """Show the annotated image's text (overridden by `show_original` and `show_threshold`)."""
+
     threshold: int
     """Grayscale to binary threshold (between `0` and `255`)."""
 
@@ -111,6 +114,7 @@ class Settings(BaseModel):
             resolution_divisor=settings_dict['resolution_divisor'],
             show_original=settings_dict['show_original'],
             show_threshold=settings_dict['show_threshold'],
+            show_text=settings_dict['show_text'],
             threshold=settings_dict['threshold'],
             radius=settings_dict['radius'],
             dilate=settings_dict['dilate'],
@@ -131,11 +135,12 @@ class Settings(BaseModel):
             resolution_divisor=3.0,
             show_original=True,
             show_threshold=True,
+            show_text=False,
             threshold=127,
             radius=0,
             dilate=0,
             erode=0,
-            min_size=0,
+            min_size=100,
             max_size=1_000_000,
             convexity=0.0,
             circularity=0.0,
@@ -186,7 +191,7 @@ class ImagePanelState(BaseModel):
             seg_files=[],
             current_file="",
             mode=0,
-            view_center_point=(0,-120),
+            view_center_point=(0,0),
             view_image_width=300
         )
 

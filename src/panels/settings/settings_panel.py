@@ -39,29 +39,28 @@ class SettingsPanel(QWidget):
         self.scale_prm_widget = ScaleParameter(settings.scale, settings.scale_units)
         self.scale_prm_widget.get_field_widget().textChanged.connect(self.emit_fields)
         self.scale_prm_widget.get_combo_box_widget().activated.connect(self.emit_fields)
-        self.res_divisor_prm_widget = self.new_param("Image Res. Divisor", settings.resolution_divisor, 0.01, (1, 50))
+        self.res_divisor_prm_widget = self.new_slider("Image Res. Divisor", settings.resolution_divisor, 0.01, (1, 50))
 
-        self.show_orig_prm_widget = BoolParameter("Show Original", settings.show_original)
-        self.show_orig_prm_widget.get_checkbox().stateChanged.connect(self.emit_fields)
+        self.show_orig_prm_widget = self.new_checkbox("Show Original", settings.show_original)
+        self.show_thresh_prm_widget = self.new_checkbox("Show Threshold", settings.show_threshold)
+        self.show_text_prm_widget = self.new_checkbox("Show Text", settings.show_text)
 
-        self.show_thresh_prm_widget = BoolParameter("Show Threshold", settings.show_threshold)
-        self.show_thresh_prm_widget.get_checkbox().stateChanged.connect(self.emit_fields)
-
-        self.thresh_prm_widget = self.new_param("Threshold", settings.threshold, 1, (0, 255))
-        self.radius_prm_widget = self.new_param("Radius", settings.radius, 1, (0, 20))
-        self.dilate_prm_widget = self.new_param("Dilate", settings.dilate, 1, (0, 50))
-        self.erode_prm_widget = self.new_param("Erode", settings.erode, 1, (0, 50))
-        self.min_size_prm_widget = self.new_param("Min size", settings.min_size, 1_000, (0, 200_000))
-        self.max_size_prm_widget = self.new_param("Max size", settings.max_size, 1_000, (0, 1_000_000))
-        self.convexity_prm_widget = self.new_param("Convexity", settings.convexity, 0.01, (0, 1))
-        self.circularity_prm_widget = self.new_param("Circularity", settings.circularity, 0.01, (0, 1))
-        self.thick_percent_prm_widget = self.new_param("Thickness %ile", settings.thickness_percentile, 1, (0, 100))
+        self.thresh_prm_widget = self.new_slider("Threshold", settings.threshold, 1, (0, 255))
+        self.radius_prm_widget = self.new_slider("Radius", settings.radius, 1, (0, 20))
+        self.dilate_prm_widget = self.new_slider("Dilate", settings.dilate, 1, (0, 50))
+        self.erode_prm_widget = self.new_slider("Erode", settings.erode, 1, (0, 50))
+        self.min_size_prm_widget = self.new_slider("Min size", settings.min_size, 1_000, (0, 200_000))
+        self.max_size_prm_widget = self.new_slider("Max size", settings.max_size, 1_000, (0, 1_000_000))
+        self.convexity_prm_widget = self.new_slider("Convexity", settings.convexity, 0.01, (0, 1))
+        self.circularity_prm_widget = self.new_slider("Circularity", settings.circularity, 0.01, (0, 1))
+        self.thick_percent_prm_widget = self.new_slider("Thickness %ile", settings.thickness_percentile, 1, (0, 100))
         
         # show visually
         self.vlayout.addWidget(self.scale_prm_widget)
         self.vlayout.addWidget(self.res_divisor_prm_widget)
         self.vlayout.addWidget(self.show_orig_prm_widget)
         self.vlayout.addWidget(self.show_thresh_prm_widget)
+        self.vlayout.addWidget(self.show_text_prm_widget)
         self.vlayout.addWidget(self.thresh_prm_widget)
         self.vlayout.addWidget(self.radius_prm_widget)
         self.vlayout.addWidget(self.dilate_prm_widget)
@@ -77,15 +76,25 @@ class SettingsPanel(QWidget):
 
         # -- connect signal --
         self.settings_changed.connect(self.receive_settings)
+    
+    def new_checkbox(self,
+                     name: str,
+                     value: bool
+        ) -> BoolParameter:
+        """Creates a new `BoolParameter` widget with the given values."""
+        bool_parameter = BoolParameter(name, value)
+        bool_parameter.get_checkbox().stateChanged.connect(self.emit_fields)
+        return bool_parameter
 
-    def new_param(self, 
+
+    def new_slider(self, 
                  name: str, 
                  value: int | float,
                  valstep: int | float,
                  bounds: tuple[int, int] | tuple[float, float],
                  units: str = ""
         ) -> SliderParameter:
-        """Creates a new SliderParameter widget with the given values."""
+        """Creates a new `SliderParameter` widget with the given values."""
         slider_parameter = SliderParameter(name, value, valstep, bounds, units=units)
         slider_parameter.get_slider().valueChanged.connect(self.emit_fields)
         slider_parameter.get_spin_box().valueChanged.connect(self.emit_fields)
@@ -102,6 +111,7 @@ class SettingsPanel(QWidget):
         self.res_divisor_prm_widget.get_spin_box().setValue(settings.resolution_divisor) # type: ignore
         self.show_orig_prm_widget.get_checkbox().setChecked(settings.show_original)
         self.show_thresh_prm_widget.get_checkbox().setChecked(settings.show_threshold)
+        self.show_text_prm_widget.get_checkbox().setChecked(settings.show_text)
         self.thresh_prm_widget.get_spin_box().setValue(settings.threshold)
         self.radius_prm_widget.get_spin_box().setValue(settings.radius)
         self.dilate_prm_widget.get_spin_box().setValue(settings.dilate)
@@ -120,6 +130,7 @@ class SettingsPanel(QWidget):
             resolution_divisor=self.res_divisor_prm_widget.get_spin_box().value(),
             show_original = self.show_orig_prm_widget.get_checkbox().isChecked(),
             show_threshold = self.show_thresh_prm_widget.get_checkbox().isChecked(),
+            show_text = self.show_text_prm_widget.get_checkbox().isChecked(),
             threshold = int(self.thresh_prm_widget.get_spin_box().value()),
             radius = int(self.radius_prm_widget.get_spin_box().value()),
             dilate = int(self.dilate_prm_widget.get_spin_box().value()),
@@ -135,5 +146,11 @@ class SettingsPanel(QWidget):
         """Logic for disabling/enabling Show Threshold checkbox."""
         if settings.show_original:
             self.show_thresh_prm_widget.setDisabled(True)
+            self.show_text_prm_widget.setDisabled(True)
         else:
-            self.show_thresh_prm_widget.setDisabled(False)
+            if settings.show_threshold:
+                self.show_thresh_prm_widget.setDisabled(False)
+                self.show_text_prm_widget.setDisabled(True)
+            else:
+                self.show_thresh_prm_widget.setDisabled(False)
+                self.show_text_prm_widget.setDisabled(False)

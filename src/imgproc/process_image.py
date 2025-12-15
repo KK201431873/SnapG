@@ -5,6 +5,12 @@ import math
 from PIL import Image, ImageFont, ImageDraw
 from pathlib import Path
 
+import time
+
+def clamp(x, lower, upper):
+    """Clamps `x` between `lower` and `upper`."""
+    return max(lower, min(upper, x))
+
 def create_circular_kernel(radius):
     """Create a circular kernel mask"""
     size = 2 * radius + 1
@@ -21,6 +27,7 @@ def process_image(
         input_image: npt.NDArray, 
         resolution_divisor: float,
         show_thresholded: bool,
+        show_text: bool,
         nm_per_pixel: float,
         thresh_val: int, 
         radius_val: int, 
@@ -30,7 +37,9 @@ def process_image(
         max_size: int, 
         convex_thresh: float, 
         circ_thresh: float,
-        stop_flag
+        thickness_percentile: int,
+        stop_flag,
+        verbose = False
     ):
     h, w = input_image.shape
     linear_correction_ratio = 1.0 / resolution_divisor
@@ -40,8 +49,12 @@ def process_image(
     min_size = int(min_size * area_correction_ratio)
     max_size = int(max_size * area_correction_ratio)
     
-    print()
-    print("thresholding")
+    very_start_time = time.perf_counter()
+    if verbose:
+        print()
+        print("thresholding")
+        start_time = very_start_time
+
     # Threshold image (binary)
     kernel = create_circular_kernel(radius_val)
     kernel_sum = np.sum(kernel)
@@ -75,7 +88,12 @@ def process_image(
     if show_thresholded:
         return eroded, []
     
-    print("getting contours")
+    if verbose:
+        now = time.perf_counter()
+        print(f"thresh took {now-start_time}s") # type: ignore
+        print("getting contours")
+        start_time = now
+
     # Find contours
     contours, _ = cv2.findContours(eroded, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     
@@ -139,115 +157,198 @@ def process_image(
 
     # return all_contours_mask, []
     
-    print("drawing contours")
-    data = [] # (ID, gratio, circularity, inner_diameter, outer_diameter, myelin_thickness)
+    
+    now = time.perf_counter()
+    if verbose:
+        print(f"contours took {now-start_time}s") # type: ignore
+        print(f"drawing {len(filtered_contours)} contours")
+    start_time = now
+
+    data = []  # (ID, gratio, circularity, inner_diameter, outer_diameter, myelin_thickness)
+
+    TWO_PI = 2 * math.pi
+    img_h = input_image.shape[0]
+    img_w = input_image.shape[1]
+    draw_scale = int(8 * img_h / 4096)
+
+    font_path = Path("assets/JetBrainsMono-Bold.ttf")
+    font = ImageFont.truetype(font_path, max(15, int(15 * draw_scale)))
+
+    # Text drawing helper
+    def draw_text(text, x, y, color, font, shadow=True):
+        # white rectangular shadow
+        if shadow:
+            bbox = draw.textbbox((x, y), text, font=font)
+            pad = max(1, int(draw_scale))
+            draw.rectangle(
+                (
+                    bbox[0] - pad,
+                    bbox[1] - pad,
+                    bbox[2] + pad,
+                    bbox[3] + pad,
+                ),
+                fill=(255, 255, 255)
+            )
+        # black text
+        draw.text((x, y), text, font=font, fill=color)
+
+    # Draw contours/text
+    give_up = False # len(filtered_contours) > 150
     for i, contour in enumerate(filtered_contours):
-        print(f"drawing contour {i}, stop_processing={stop_flag()}")
+        if give_up:
+            break
+
         if stop_flag():
             return out_img, data
-        # Create mask of this contour
-        contour_mask = np.zeros_like(eroded)
-        cv2.drawContours(contour_mask, [contour], -1, 255, thickness=cv2.FILLED)
 
         # Compute center of mass of the contour
-        moments = cv2.moments(contour)
-        if moments["m00"] == 0:
+        M = cv2.moments(contour)
+        if M["m00"] == 0:
             continue
-        cx = int(moments["m10"] / moments["m00"])
-        cy = int(moments["m01"] / moments["m00"])
+
+        cx = int(M["m10"] / M["m00"])
+        cy = int(M["m01"] / M["m00"])
+
+        # Create mask of this contour
+        contour_mask = np.zeros_like(eroded)
+        cv2.drawContours(contour_mask, [contour], -1, 255, cv2.FILLED)
 
         # Define bounding box around center of mass to crop candidate area
-        search_radius = int(cv2.arcLength(contour, True) / (2*math.pi) + input_image.shape[0]/8)
+        search_radius = int(cv2.arcLength(contour, True) / TWO_PI + img_h / 8)
         x_min = max(cx - search_radius, 0)
         x_max = min(cx + search_radius + 1, eroded.shape[1])
         y_min = max(cy - search_radius, 0)
         y_max = min(cy + search_radius + 1, eroded.shape[0])
 
-        # Crop exclusion mask and eroded image
+        cropped_mask = contour_mask[y_min:y_max, x_min:x_max]
         cropped_eroded = eroded[y_min:y_max, x_min:x_max]
-        cropped_contour_mask = contour_mask[y_min:y_max, x_min:x_max]
 
         # Build exclusion mask inside this cropped area
-        exclusion_raw = ((cropped_contour_mask == 0) & (cropped_eroded == 255)).astype(np.uint8)
-        exclusion_mask = cv2.Canny(exclusion_raw,0,0)
-        distance = cv2.distanceTransform(255 - cropped_contour_mask, distanceType=cv2.DIST_L2, maskSize=5)[exclusion_mask > 0]
+        exclusion_raw = ((cropped_mask == 0) & (cropped_eroded == 255)).astype(np.uint8)
+        exclusion_edges = cv2.Canny(exclusion_raw, 0, 0)
 
-        # print(max([max(row) for row in distance]))
-        # return cv2.bitwise_and((distance/max([max(row) for row in distance])*255).astype(np.uint8), exclusion_mask)
-        
-        # Flatten the array and filter out zeros
-        nonzero_vals = distance[distance > 0]
+        # distance transform (computed once)
+        dist = cv2.distanceTransform(255 - cropped_mask, cv2.DIST_L2, 5)
+        distance_samples = dist[exclusion_edges > 0]
 
-        # Safety check: fewer than n nonzero values
-        n = 2*len(contour)
+        # Thickness estimation
+        nonzero_vals = distance_samples[distance_samples > 0]
+        n = 2 * len(contour)
+
         if len(nonzero_vals) < n:
-            smallest = np.sort(nonzero_vals)
+            smallest = nonzero_vals
         else:
-            # Get the n smallest nonzero values (unsorted)
             smallest = np.partition(nonzero_vals, n - 1)[:n]
 
-        # Get thickness via percentile
-        thickness = np.percentile(np.array(smallest), 30) # type: ignore
+        thickness = np.percentile(smallest, thickness_percentile) # type: ignore
 
         ### generate visualization ###
-        # Use distance transform
-        distance = cv2.distanceTransform(255 - cropped_contour_mask, distanceType=cv2.DIST_L2, maskSize=5)
-
-        # Draw outer and inner contours
-        offset_mask = (distance <= thickness).astype(np.uint8) * 255
-        offset_mask = offset_mask.astype(np.uint8)
+        offset_mask = (dist <= thickness).astype(np.uint8) * 255
         outer_contour, _ = cv2.findContours(offset_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        distance_inner = cv2.distanceTransform(offset_mask, cv2.DIST_L2, maskSize=5)
-        offset_mask_eroded = (distance_inner > thickness).astype(np.uint8) * 255
-        inner_contour, _ = cv2.findContours(offset_mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        draw_scale = int(8*input_image.shape[0]/4096)
+        inner_contour = [contour]
 
-        # Calculate g-ratio
+        # Calculate g-ratio & circularity
         contour_perimeter = cv2.arcLength(inner_contour[0], True)
-        radius = contour_perimeter / (2*math.pi)
+        radius = contour_perimeter / TWO_PI
+
         g_ratio = radius / (radius + thickness)
+        circularity = (
+            4 * math.pi * cv2.contourArea(inner_contour[0]) / (contour_perimeter ** 2)
+            if contour_perimeter != 0 else 0
+        )
 
-        # Calculate circularity
-        circularity = 4 * math.pi * cv2.contourArea(inner_contour[0]) / (contour_perimeter ** 2) if contour_perimeter != 0 else 0
+        inner_diameter = (2 * radius) * nm_per_pixel * resolution_divisor
+        outer_diameter = inner_diameter + 2 * thickness * nm_per_pixel * resolution_divisor
 
-        inner_diameter = (2*radius)*nm_per_pixel/resolution_divisor
-        outer_diameter = inner_diameter + 2*thickness*nm_per_pixel*resolution_divisor
-        
         # Draw contour and label thickness on output image
-        cv2.drawContours(out_img, inner_contour + np.array([[[x_min, y_min]]]), -1, (0, 255, 0), draw_scale)
-        cv2.drawContours(out_img, outer_contour + np.array([[[x_min, y_min]]]), -1, (0, 255, 0), draw_scale)
-        M = cv2.moments(contour)
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"]-6*draw_scale)
-            line_spacing = 14*draw_scale
-            out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
-            font_path = Path("assets/JetBrainsMono-Bold.ttf")
-            font = ImageFont.truetype(font_path, max(15,int(15*draw_scale)))
+        offset = np.array([[[x_min, y_min]]])
+        cv2.drawContours(out_img, inner_contour, -1, (0, 255, 0), draw_scale)
+        cv2.drawContours(out_img, outer_contour + offset, -1, (0, 255, 0), draw_scale)
+
+        # text
+        cx_text = cx
+        cy_text = int(cy - 6 * draw_scale)
+        line_spacing = 14 * draw_scale
+
+        out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
+
+        if show_text:
             draw = ImageDraw.Draw(out_pil)
 
-            # magic correction factors (i don't know if it works for images other than 4096px)
-            if input_image.shape[0] < 512:
-                x_correction_factor = 5*max(1, draw_scale)
-                y_correction = 10*max(1,line_spacing)
+            if img_h < 512:
+                x_corr = 5 * max(1, draw_scale)
+                y_corr = 10 * max(1, line_spacing)
             else:
-                x_correction_factor = 5*draw_scale
-                y_correction = 1/2*line_spacing
-            def draw_white_id_text(dx,dy):
-                draw.text((int(cx-x_correction_factor*len(f"#{i+1}"))+dx, cy-y_correction+dy), f"#{i+1}", font=font, fill=(255, 255, 255))
-            for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
-                draw_white_id_text(dx,dy)
-            draw.text((int(cx-x_correction_factor*len(f"#{i+1}")), cy-y_correction), f"#{i+1}", font=font, fill=(0, 0, 0))
-            inner_dia_text = f"ø{int(round(inner_diameter))}nm" if round(inner_diameter)<1000 else f"ø{inner_diameter/1000:.2f}μm"
-            def draw_white_inner_dia_text(dx,dy):
-                draw.text((int(cx-x_correction_factor*len(inner_dia_text)+dx), cy+y_correction+dy), inner_dia_text, font=font, fill=(255, 255, 255))
-            for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
-                draw_white_inner_dia_text(dx,dy)
-            draw.text((int(cx-x_correction_factor*len(inner_dia_text)), cy+y_correction), inner_dia_text, font=font, fill=(0, 0, 255))
+                x_corr = 5 * draw_scale
+                y_corr = 0.5 * line_spacing
 
-            out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
-            
-        data.append((i+1, float(g_ratio), float(circularity), float(inner_diameter), float(outer_diameter), float(thickness)))
-        # print(f"myelin thickness {thickness} | axon radius {radius} | g_ratio {g_ratio}")
+            label = f"#{i+1}"
+
+            draw_text(
+                label,
+                int(cx_text - x_corr * len(label)),
+                int(cy_text - y_corr),
+                (0, 0, 0),
+                font
+            )
+
+            inner_text = (
+                f"ø{int(round(inner_diameter))}nm"
+                if round(inner_diameter) < 1000
+                else f"ø{inner_diameter/1000:.2f}μm"
+            )
+
+            draw_text(
+                inner_text,
+                int(cx_text - x_corr * len(inner_text)),
+                int(cy_text + y_corr),
+                (255, 255, 0),
+                font,
+                shadow=False
+            )
+
+        out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
+
+        # Store results
+        data.append((
+            i + 1,
+            float(g_ratio),
+            float(circularity),
+            float(inner_diameter),
+            float(outer_diameter),
+            float(thickness)
+        ))
+
+        # give up if taking too long (>5s)
+        now = time.perf_counter()
+        if now - very_start_time > 5:
+            give_up = True
+
+    # Give up if too many contours
+    if give_up:
+        out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
+        draw = ImageDraw.Draw(out_pil)
+        img_size = max(img_w, img_h)
+        size = 7
+        if img_size <= 128:
+            size = 7 + clamp(int((12-7)*(img_size-82)/(128-82)), 0, 12-7)
+        elif img_size <= 512:
+            size = 12 + clamp(int((40-12)*(img_size-128)/(447-128)), 0, 40-12)
+        elif img_size <= 1170:
+            size = 40 + clamp(int((100-40)*(img_size-512)/(1170-512)), 0, 100-40)
+        else: # size 4096
+            size = 100 + clamp(int((350-100)*(img_size-1170)/(4096-1170)), 0, 350-100)
+        # print(size)
+        font = ImageFont.truetype(font_path, size)
+        draw_text("Too Much Work!", 0, 3*size, (0,0,0), font, shadow=True)
+        draw_text("(Try increasing", 0, 4.5*size, (0,0,0), font, shadow=True)
+        draw_text("resolution divider", 0, 6*size, (0,0,0), font, shadow=True)
+        draw_text("or minimum size)", 0, 7.5*size, (0,0,0), font, shadow=True)
+        out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
+        return out_img, []
+    
+    if verbose:
+        now = time.perf_counter()
+        print(f"drawing took {now-start_time}s") # type: ignore
     
     return out_img, data
