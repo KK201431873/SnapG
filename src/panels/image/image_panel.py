@@ -1,6 +1,9 @@
 from PySide6.QtCore import (
     QSize,
-    Signal
+    Signal,
+    QThread,
+    Qt,
+    QTimer
 )
 from PySide6.QtGui import (
     QImage
@@ -9,13 +12,13 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout, 
     QTextEdit,
-    QMessageBox
+    QMessageBox,
+    QApplication
 )
 
 from panels.settings.settings_panel import SettingsPanel
 from panels.image.image_view import ImageView
-
-from imgproc.process_image import process_image
+from panels.image.imgproc_worker import ImgProcWorker
 
 from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings
 
@@ -33,6 +36,15 @@ class Mode(Enum):
 
 class ImagePanel(QWidget):
     """Central image viewer and contour selector."""
+    
+    enqueue_process = Signal(object, object) # original image, settings
+    """Emits a command for imgproc worker thread to begin processing."""
+
+    files_changed = Signal(list, list, Path)
+    """Emits the current list of images, segmentation files, and the current selected file."""
+
+    stop_worker_signal = Signal()
+    """Signal to stop the worker thread."""
 
     def __init__(self, app_state: AppState, settings_panel: SettingsPanel):
         super().__init__()
@@ -43,9 +55,12 @@ class ImagePanel(QWidget):
         self.seg_files: list[Path] = [Path(p) for p in app_state.image_panel_state.seg_files]
         current_file_str = app_state.image_panel_state.current_file
         self.current_file: Path | None = Path(current_file_str) if current_file_str != "" else None
+        self.last_current_file: Path | None = None # this is for update_image() to cache images after imread
+        # image state
         self.current_original_image: npt.NDArray | None = None
         self.display_image: npt.NDArray | None = None
         self.current_seg_data: SegmentationData | None = None
+        # logic/config
         self.settings: Settings | None = None
         self.mode: Mode = Mode(app_state.image_panel_state.mode)
 
@@ -56,20 +71,41 @@ class ImagePanel(QWidget):
         # image view
         self.image_view = ImageView(self, app_state)
         vlayout.addWidget(self.image_view)
+        
+        # image processing thread
+        self.processing_thread = QThread(self)
+        self.worker = ImgProcWorker()
+        self.worker.moveToThread(self.processing_thread)
+        # start and receive signals
+        self.enqueue_process.connect(self.worker.enqueue)
+        self.worker.finished.connect(self._on_processing_finished)
+        self.worker.error.connect(self._on_processing_error)
+        self.processing_thread.started.connect(self.worker.start)
+        self.processing_thread.start()
 
         # sync other states
         self.update_image()
     
+    def emit_files(self):
+        """Emits this `ImagePanel`'s `files_changed` signal."""
+        self.files_changed.emit(
+            self.image_files,
+            self.seg_files,
+            self.current_file
+        )
+    
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
-        filtered_paths = list(set([p for p in image_paths if self._validate_file(p)])) # set to remove duplicates
+        filtered_paths = list(set([p for p in image_paths if self._validate_file(p)])) # cvt to set to remove duplicates
         if len(filtered_paths) > 0:
             for p in filtered_paths:
-                self.image_files.remove(p) # remove duplicates
+                self.image_files.remove(p) # remove existing duplicates
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
             # request imgproc settings
             self.settings_panel.emit_fields()
+            # emit signal
+            self.emit_files()
     
     def _set_current_file(self, 
                           file_path: Path, 
@@ -101,6 +137,9 @@ class ImagePanel(QWidget):
         # update state
         self.current_file = file_path
         self.update_image()
+        
+        # emit signal
+        self.emit_files()
         return True
 
     def _validate_file(self, file_path: Path) -> bool:
@@ -186,13 +225,17 @@ class ImagePanel(QWidget):
         
         # retrieve image
         if self.mode == Mode.TUNE:
-            self.current_original_image = cv2.imread(str(self.current_file))
+            if self.last_current_file is None or self.current_file != self.last_current_file:
+                self.current_original_image = cv2.imread(str(self.current_file))
             self._process_current_image()
         elif self.mode == Mode.REVIEW:
             self.current_seg_data = self._get_segmentation_data(self.current_file)
             if self.current_seg_data is not None:
                 self.current_original_image = self.current_seg_data.image
             self.display_image = self.current_original_image
+
+        # keep track of if file changed
+        self.last_current_file = self.current_file
 
         # set image
         if self.display_image is None:
@@ -201,42 +244,29 @@ class ImagePanel(QWidget):
     
     def _process_current_image(self):
         """Process the current image according to segmentation settings."""
-        if self.current_original_image is not None:
-            # check settings exists
-            if self.settings is None:
-                self.display_image = self.current_original_image
-                return
-            
-            # check show original
-            settings = self.settings
-            if settings.show_original:
-                self.display_image = self.current_original_image
-                return 
-            
-            # process image
-            resized_image = cv2.resize(
-                self.current_original_image, 
-                None, 
-                fx=1/settings.resolution_divisor, 
-                fy=1/settings.resolution_divisor
-            )
-            resized_image = cv2.cvtColor(resized_image, cv2.COLOR_BGR2GRAY)
-            nm_per_pixel = settings.scale if settings.scale_units == "nm" else settings.scale/1000
-            processed_image, data = process_image(
-                resized_image,
-                settings.resolution_divisor,
-                settings.show_threshold,
-                nm_per_pixel,
-                settings.threshold,
-                settings.radius,
-                settings.dilate,
-                settings.erode,
-                settings.min_size,
-                settings.max_size,
-                settings.convexity,
-                settings.circularity
-            )
-            self.display_image = processed_image
+        if self.current_original_image is None or self.settings is None:
+            self.display_image = self.current_original_image
+            return
+
+        # enqueue image processing on worker thread
+        # self.enqueue_process.emit(
+        #     self.current_original_image,
+        #     self.settings
+        # )
+        self.worker.enqueue(
+            self.current_original_image,
+            self.settings
+        )
+
+    def _on_processing_finished(self, image: np.ndarray, seg_data):
+        """Receive worker thread results and set display image."""
+        self.display_image = image
+        self.current_seg_data = seg_data
+        self.image_view.set_image(self.display_image)
+
+    def _on_processing_error(self, message: str):
+        """Handle worker thread errors."""
+        QMessageBox.critical(self, "Processing Error", message)
     
     def set_image_view(self, image_panel_state: ImagePanelState):
         """Set the center position and zoom of the `ImageView` to the given values."""
@@ -255,4 +285,13 @@ class ImagePanel(QWidget):
             view_center_point=self.image_view.get_center_point(),
             view_image_width=self.image_view.get_image_width()
         )
+    
+    def closeEvent(self, event):
+        if self.worker:
+            self.worker.stop()
+
+        self.processing_thread.quit()
+
+        QTimer.singleShot(1000, self.processing_thread.wait)
+        event.accept()
     

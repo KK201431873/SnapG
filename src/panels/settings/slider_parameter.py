@@ -95,13 +95,27 @@ class SliderParameter(QFrame):
         self.setLayout(hlayout)
 
         # -- event handling --
-        self.slider.valueChanged.connect(
-            lambda v: self.spin.setValue(v / scale)
-        )
+        self.scale = scale
+        self.slider.valueChanged.connect(self._on_slider_changed)
+        self.spin.valueChanged.connect(self._on_spin_changed)
 
-        self.spin.valueChanged.connect(
-            lambda v: self.slider.setValue(int(v * scale))
-        )
+    def _on_slider_changed(self, v):
+        """Slider updates spinbox."""
+        self.spin.blockSignals(True)
+        try:
+            self.spin.setValue(v / self.scale) 
+        finally:
+            self.spin.blockSignals(False)
+
+
+    def _on_spin_changed(self, v):
+        """Spinbox updates slider."""
+        self.slider.blockSignals(True)
+        try:
+            self.slider.setValue(int(round(v * self.scale)))
+        finally:
+            self.slider.blockSignals(False)
+
     
     def get_slider(self) -> QSlider:
         """Return this parameter's QSlider."""

@@ -4,6 +4,7 @@ src/__appdata__/*
 __pycache__
 
 *.pkl
+*.seg
 *.json
 *.snpg
 *.tif

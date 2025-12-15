@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QFrame,
     QFileDialog,
     QApplication,
-    QStyle
+    QStyle,
+    QVBoxLayout
 )
 
 from panels.image.image_panel import ImagePanel
@@ -24,6 +25,7 @@ from panels.process.process_panel import ProcessPanel
 from panels.settings.settings_panel import SettingsPanel
 from panels.output.output_panel import OutputPanel
 from panels.menu.menu_bar import MenuBar
+from panels.filetabs.file_tabs import FileTabSelector
 
 from models import AppState, View, Settings
 
@@ -42,6 +44,7 @@ class MainWindow(QMainWindow):
     settings_panel: SettingsPanel
     output_panel: OutputPanel
     menu_bar: MenuBar
+    file_tabs: FileTabSelector
 
     def __init__(self, app_state: AppState):
         super().__init__()
@@ -54,16 +57,22 @@ class MainWindow(QMainWindow):
         self.settings_panel.settings_changed.connect(self.image_panel.receive_settings)
         self.settings_panel.emit_fields() # update ImagePanel
 
+        # File tabs
+        self.file_tabs = FileTabSelector(app_state)
+        self.image_panel.files_changed.connect(self.update_file_tabs)
+        self.image_panel.emit_files()
+
         # create background widget (will contain image widget)
-        empty_central = QWidget()
-        empty_central.setMinimumSize(1, 1)
-        self.setCentralWidget(empty_central)
-        self.image_panel.setParent(empty_central)
-        self.image_panel.lower()
-        # self.image_panel.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        # resize events
-        empty_central.installEventFilter(self)
-        self._central = empty_central
+        central = QWidget()
+        central_layout = QVBoxLayout(central)
+        central_layout.setContentsMargins(0, 0, 0, 0)
+        central_layout.setSpacing(0)
+        # stack file tabs above image panel
+        central_layout.addWidget(self.file_tabs)
+        central_layout.addWidget(self.image_panel, 1)
+        # z management
+        self.setCentralWidget(central)
+        self._central = central
 
         # docks
         self.process_dock = self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
@@ -96,10 +105,10 @@ class MainWindow(QMainWindow):
 
     def eventFilter(self, obj, event: QEvent):
         if obj is self._central:
-            self._resize_image_panel()
+            self.resize_image_panel()
         return super().eventFilter(obj, event)
     
-    def _resize_image_panel(self):
+    def resize_image_panel(self):
         menu_height = self.menuBar().height() if self.menuBar() else 0
 
         x_offset = -self.process_dock.width() if self.process_dock.isVisible() else \
@@ -136,6 +145,11 @@ class MainWindow(QMainWindow):
 
         self.addDockWidget(area, dock)
         return dock
+
+    def update_file_tabs(self, image_files: list[Path], seg_files: list[Path], current_file: Path):
+        """Connects `ImagePanel`'s `files_changed` signal to `FileTabSelector` and syncs state."""
+        self.file_tabs.set_files(image_files, seg_files)
+        self.file_tabs.set_current_file(current_file)
     
     def open_image_files(self):
         """Show file dialog to open image files."""
@@ -199,6 +213,7 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        self.image_panel.closeEvent(event)
         write_state(self.get_app_state())
 
     def get_app_state(self) -> AppState:

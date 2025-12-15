@@ -29,7 +29,8 @@ def process_image(
         min_size: int, 
         max_size: int, 
         convex_thresh: float, 
-        circ_thresh: float
+        circ_thresh: float,
+        stop_flag
     ):
     h, w = input_image.shape
     linear_correction_ratio = 1.0 / resolution_divisor
@@ -39,6 +40,8 @@ def process_image(
     min_size = int(min_size * area_correction_ratio)
     max_size = int(max_size * area_correction_ratio)
     
+    print()
+    print("thresholding")
     # Threshold image (binary)
     kernel = create_circular_kernel(radius_val)
     kernel_sum = np.sum(kernel)
@@ -72,6 +75,7 @@ def process_image(
     if show_thresholded:
         return eroded, []
     
+    print("getting contours")
     # Find contours
     contours, _ = cv2.findContours(eroded, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     
@@ -135,8 +139,12 @@ def process_image(
 
     # return all_contours_mask, []
     
+    print("drawing contours")
     data = [] # (ID, gratio, circularity, inner_diameter, outer_diameter, myelin_thickness)
     for i, contour in enumerate(filtered_contours):
+        print(f"drawing contour {i}, stop_processing={stop_flag()}")
+        if stop_flag():
+            return out_img, data
         # Create mask of this contour
         contour_mask = np.zeros_like(eroded)
         cv2.drawContours(contour_mask, [contour], -1, 255, thickness=cv2.FILLED)

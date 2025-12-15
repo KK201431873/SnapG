@@ -223,17 +223,48 @@ class ImageView(QWidget):
     def wheelEvent(self, event: QWheelEvent) -> None:
         if self.pixmap is None or self.scaled_pixmap is None:
             return
-        
-        # handle zoom
+
+        old_width = self.image_width
+
+        # zoom limits
         screen_width = QGuiApplication.primaryScreen().geometry().width()
         maximum_zoom = 2 * screen_width
         minimum_zoom = 50
-        delta = event.angleDelta().y()
-        delta = delta * min(self.image_width / 1000, 1)
-        self.image_width = int(clamp(self.image_width + delta, minimum_zoom, maximum_zoom))
 
-        # recompute pixmap
+        # mouse position relative to widget center
+        mouse_pos = event.position().toPoint()
+        scrn_w, scrn_h = self.size().toTuple()
+        mouse_rel = QPoint(
+            mouse_pos.x() - scrn_w // 2,
+            mouse_pos.y() - scrn_h // 2
+        )
+
+        # zoom factor
+        delta = event.angleDelta().y()
+        zoom_factor = 1.0 + delta / 1200
+        zoom_factor = clamp(zoom_factor, 0.8, 1.25)
+
+        new_width = int(clamp(
+            old_width * zoom_factor,
+            minimum_zoom,
+            maximum_zoom
+        ))
+
+        if new_width == old_width:
+            return
+
+        # shift center point
+        scale = new_width / old_width
+        cx, cy = self.center_point
+        mx, my = mouse_rel.x(), mouse_rel.y()
+        self.center_point = (
+            int(mx + (cx - mx) * scale),
+            int(my + (cy - my) * scale)
+        )
+        self.image_width = new_width
+
         self._update_scaled_pixmap()
+        self._clamp_center_position()
         self.update()
     
     def get_center_point(self) -> tuple[int, int]:
