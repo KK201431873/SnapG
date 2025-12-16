@@ -120,15 +120,15 @@ class MenuBar(QMenuBar):
         # panel visibility
         view_theme_menu = view_menu.addMenu("Panels")
         # process
-        self.view_process_action = QAction("Batch Processing Panel", self)
+        self.view_process_action = QAction("Batch Processing", self)
         self.view_process_action.setCheckable(True)
         self.view_process_action.triggered.connect(lambda: self._update_process_visibility(toggle=True))
         # settings
-        self.view_settings_action = QAction("Segmentation Settings Panel", self)
+        self.view_settings_action = QAction("Segmentation Settings", self)
         self.view_settings_action.setCheckable(True)
         self.view_settings_action.triggered.connect(lambda: self._update_settings_visibility(toggle=True))
         # output
-        self.view_output_action = QAction("Output Panel", self)
+        self.view_output_action = QAction("Output", self)
         self.view_output_action.setCheckable(True)
         self.view_output_action.triggered.connect(lambda: self._update_output_visibility(toggle=True))
 
@@ -168,7 +168,7 @@ class MenuBar(QMenuBar):
 
         # reset view
         view_menu.addSeparator()
-        self.reset_view_action = QAction("Reset View", self)
+        self.reset_view_action = QAction("Reset view", self)
         self.reset_view_action.triggered.connect(self.reset_view_triggered.emit)
         view_menu.addAction(self.reset_view_action)
     

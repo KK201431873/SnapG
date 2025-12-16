@@ -46,12 +46,11 @@ class FileTabSelector(QTabWidget):
         self.setElideMode(Qt.TextElideMode.ElideRight)
         self.setDocumentMode(True)
 
+        # minimum width
+        self.setStyleSheet("QTabBar::tab { min-width: 100px; }")
+
         self.currentChanged.connect(self._broadcast_tab_changed)
         self.tabCloseRequested.connect(self._request_close_tab)
-
-
-        #TODO: remove debug
-        self.debug_count = 0
 
     def set_files(self, image_files: list[Path], seg_files: list[Path]):
         """Update the current file tabs with the given set of image and segmentation files."""
@@ -86,6 +85,7 @@ class FileTabSelector(QTabWidget):
     def set_current_file(self, current_file: Path):
         """Sets the currently selected file tab. Creates a new tab if `current_file` doesn't exist."""
         if current_file is None:
+            self.setCurrentIndex(-1)
             return
         
         paths = self._get_tab_paths()

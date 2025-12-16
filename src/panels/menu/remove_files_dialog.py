@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QGroupBox,
+    QWidget
 )
 
 class RemoveFilesDialog(QDialog):
@@ -23,24 +24,35 @@ class RemoveFilesDialog(QDialog):
 
         self.setWindowTitle("Close Files")
         self.setModal(True)
-        self.resize(500, 400)
+        self.resize(640, 480)
 
         main_layout = QVBoxLayout(self)
+
+        list_widget = QWidget()
+        list_layout = QHBoxLayout(list_widget)
+        list_layout.setStretch(0, 1)
+        list_layout.setStretch(1, 1)
 
         # --- image files ---
         self.image_list = self._create_file_list(
             "Image Files",
             image_files,
         )
+        self.image_list["group"].setMinimumWidth(200)
+        self.image_list["group"].setMinimumHeight(200)
 
         # --- segmentation files ---
         self.seg_list = self._create_file_list(
             "Segmentation Files",
             seg_files,
         )
+        self.seg_list["group"].setMinimumWidth(200)
+        self.seg_list["group"].setMinimumHeight(200)
 
-        main_layout.addWidget(self.image_list["group"])
-        main_layout.addWidget(self.seg_list["group"])
+        list_layout.addWidget(self.image_list["group"])
+        list_layout.addWidget(self.seg_list["group"])
+
+        main_layout.addWidget(list_widget)
 
         # --- buttons ---
         button_layout = QHBoxLayout()
