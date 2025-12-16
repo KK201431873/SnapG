@@ -14,8 +14,6 @@ from PySide6.QtWidgets import (
     QCheckBox
 )
 
-from panels.checkable_list import CheckableListWidget
-
 class RemoveFilesDialog(QDialog):
     def __init__(
         self,
@@ -80,11 +78,13 @@ class RemoveFilesDialog(QDialog):
         layout = QVBoxLayout(group)
 
         # multi-checkbox
-        multi_checkbox = QCheckBox()
+        multi_checkbox = QCheckBox("No Items Selected")
         layout.addWidget(multi_checkbox)
+        multi_checkbox.setTristate(True)
+        multi_checkbox.setDisabled(True)
 
         # list
-        list_widget = CheckableListWidget()
+        list_widget = QListWidget()
         list_widget.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
         for path in files:
@@ -95,11 +95,80 @@ class RemoveFilesDialog(QDialog):
             list_widget.addItem(item)
 
         layout.addWidget(list_widget)
+        
+        # connect list to multi-checkbox and vice versa
+        multi_checkbox.stateChanged.connect(
+            lambda state: self._apply_multi_checkbox(state, multi_checkbox, list_widget)
+        )
+
+        list_widget.itemSelectionChanged.connect(
+            lambda: self._update_multi_checkbox(multi_checkbox, list_widget)
+        )
 
         return {
             "group": group,
             "list": list_widget,
         }
+
+    def _apply_multi_checkbox(self, state_int: int, multi_checkbox: QCheckBox, list_widget: QListWidget):
+        """Multi-checkbox updates all selected list items."""
+        state = Qt.CheckState(state_int)
+        if state == Qt.CheckState.PartiallyChecked:
+            return
+
+        multi_checkbox.setTristate(False)
+        target_state = Qt.CheckState.Checked if state == Qt.CheckState.Checked \
+            else Qt.CheckState.Unchecked
+
+        for item in list_widget.selectedItems():
+            item.setCheckState(target_state)
+
+    def _update_multi_checkbox(self, multi_checkbox: QCheckBox, list_widget: QListWidget):
+        """Connect list to multi-checkbox."""
+        multi_checkbox.blockSignals(True)
+
+        def disable(): # internal helper
+            multi_checkbox.setCheckState(Qt.CheckState.Unchecked)
+            multi_checkbox.setText("No Items Selected")
+            multi_checkbox.setDisabled(True)
+            multi_checkbox.blockSignals(False)
+        
+        # check empty selection
+        selection = list_widget.selectedItems()
+        if len(selection) == 0:
+            disable()
+            return
+        
+        # determine selection state
+        has_checked = False
+        has_unchecked = False
+        for item in selection:
+            has_checked |= item.checkState() == Qt.CheckState.Checked
+            has_unchecked |= item.checkState() == Qt.CheckState.Unchecked
+            if has_checked and has_unchecked:
+                break
+
+        # sanity check
+        if not has_checked and not has_unchecked:
+            disable()
+            return
+
+        # update checkbox
+        multi_checkbox.setDisabled(False)
+        if has_checked and has_unchecked:
+            multi_checkbox.setTristate(True)
+            multi_checkbox.setCheckState(Qt.CheckState.PartiallyChecked)
+            multi_checkbox.setText("Check Selected")
+        elif has_checked:
+            multi_checkbox.setTristate(False)
+            multi_checkbox.setCheckState(Qt.CheckState.Checked)
+            multi_checkbox.setText("Uncheck Selected")
+        else:
+            multi_checkbox.setTristate(False)
+            multi_checkbox.setCheckState(Qt.CheckState.Unchecked)
+            multi_checkbox.setText("Check Selected")
+        
+        multi_checkbox.blockSignals(False)
 
     # ---------- public API ----------
 
