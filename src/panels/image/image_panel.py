@@ -109,7 +109,47 @@ class ImagePanel(QWidget):
             self._set_current_file(filtered_paths[-1], is_image=True)
             # request imgproc settings
             self.settings_panel.emit_fields()
-            # emit signal
+    
+    def remove_files(self, file_paths: list[Path]):
+        """Remove the given files."""
+        if not file_paths:
+            return
+
+        # store current file data
+        old_current = self.current_file
+        was_image = old_current in self.image_files if old_current else False
+
+        if old_current:
+            if was_image:
+                old_index = self.image_files.index(old_current)
+            elif old_current in self.seg_files:
+                old_index = self.seg_files.index(old_current)
+            else:
+                old_index = -1
+        else:
+            old_index = -1
+
+        # remove the given files
+        for path in file_paths:
+            if path in self.image_files:
+                self.image_files.remove(path)
+            if path in self.seg_files:
+                self.seg_files.remove(path)
+
+        # check if didn't remove current file
+        if old_current and old_current not in file_paths:
+            self.emit_files()
+            return
+        
+        # handle current file behavior
+        file_list = self.image_files if was_image else self.seg_files
+        if file_list:
+            new_index = min(old_index, len(file_list) - 1)
+            self._set_current_file(file_list[new_index], is_image=was_image)
+        else:
+            self.current_file = None
+            self.display_image = None
+            self.image_view.clear_image()
             self.emit_files()
     
     def _set_current_file(self, 
@@ -121,12 +161,17 @@ class ImagePanel(QWidget):
         Returns
             kept (bool): Whether the file was kept.
         """
+        if file_path == self.current_file:
+            return True
+
         valid = self._validate_file(file_path)
         if not valid:
             if file_path in self.image_files:
                 self.image_files.remove(file_path)
+                self.emit_files()
             if file_path in self.seg_files:
                 self.seg_files.remove(file_path)
+                self.emit_files()
             return False
         
         # update lists
@@ -281,6 +326,14 @@ class ImagePanel(QWidget):
             image_panel_state.view_center_point, 
             image_panel_state.view_image_width
         )
+    
+    def get_image_files(self) -> list[Path]:
+        """Returns this `ImagePanel`'s image files."""
+        return [Path(p) for p in self.image_files]
+
+    def get_seg_files(self) -> list[Path]:
+        """Returns this `ImagePanel`'s segmentation files."""
+        return [Path(p) for p in self.seg_files]
     
     def to_state(self) -> ImagePanelState:
         """Return all current fields as an `ImagePanelState` object."""

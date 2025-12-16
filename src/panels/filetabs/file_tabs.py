@@ -33,6 +33,9 @@ class FileTabSelector(QTabWidget):
     tab_changed = Signal(Path, bool)
     """Emits path of currently opened tab and whether the file is an image."""
 
+    close_file_requested = Signal(Path)
+    """Emits path of file to be removed."""
+
     def __init__(self, app_state: AppState):
         super().__init__()
         self.setObjectName("FileTabs")
@@ -44,6 +47,7 @@ class FileTabSelector(QTabWidget):
         self.setDocumentMode(True)
 
         self.currentChanged.connect(self._broadcast_tab_changed)
+        self.tabCloseRequested.connect(self._request_close_tab)
 
 
         #TODO: remove debug
@@ -74,39 +78,10 @@ class FileTabSelector(QTabWidget):
                 if path not in image_files and path not in seg_files:
                     self.removeTab(i)
         
-        # emit signal if changed
+        # emit signal if index changed
         index = self.currentIndex()
         if index != start_index:
             self._broadcast_tab_changed(index)
-            
-        # self.debug_count+=1
-        # this_count = self.debug_count
-        
-        # paths = self._get_tab_paths()
-        # print(f"[SET_FILES] Before paths {[p.name if p is not None else "None" for p in paths]} ({this_count})")
-        # print(f"|  Received image_files: {[p.name for p in image_files]} ({this_count})")
-        # print(f"|  Received seg_files: {[p.name for p in seg_files]} ({this_count})")
-
-        # # add new image paths
-        # print(f"|  [IMAGE] # of files {len(image_files)} ({this_count})")
-        # for image_path in image_files:
-        #     print(f"|  [IMAGE] checking {image_path.name} ({this_count})")
-        #     if image_path not in paths:
-        #         print(f"|  [IMAGE] adding {image_path.name} ({this_count})")
-        #         self._create_new_tab(image_path)
-
-        # # add new segmentation paths
-        # for seg_path in seg_files:
-        #     if seg_path not in paths:
-        #         self._create_new_tab(seg_path)
-
-        # # remove disappeared paths
-        # for i in range(len(paths)-1, -1, -1):
-        #     path = paths[i]
-        #     if path not in image_files and path not in seg_files:
-        #         self.removeTab(i)
-        
-        # print(f"|  Finished set_files ({this_count})\n")
 
     def set_current_file(self, current_file: Path):
         """Sets the currently selected file tab. Creates a new tab if `current_file` doesn't exist."""
@@ -145,9 +120,8 @@ class FileTabSelector(QTabWidget):
 
     def _broadcast_tab_changed(self, index: int):
         """Receive tab change index and broadcast corresponding file path."""
-        print(f"[BROADCAST] Emitting tab changed!")
         paths = self._get_tab_paths()
-        if not (0 <= index <= len(paths)-1):
+        if not (0 <= index <= len(paths) - 1):
             return # sanity check
         
         path = paths[index]
@@ -157,4 +131,17 @@ class FileTabSelector(QTabWidget):
         # broadcast
         is_image = path.suffix.lower() != ".seg"
         self.tab_changed.emit(path, is_image)
+    
+    def _request_close_tab(self, index: int):
+        """Emit signal to tell `ImagePanel` that a tab wants to be closed."""
+        paths = self._get_tab_paths()
+        if not (0 <= index <= len(paths) - 1):
+            return # sanity check
+        
+        path = paths[index]
+        if path is None:
+            return
+        
+        # send signal
+        self.close_file_requested.emit(path)
 

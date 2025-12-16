@@ -61,6 +61,7 @@ class MainWindow(QMainWindow):
         self.file_tabs = FileTabSelector(app_state)
         self.image_panel.files_changed.connect(self.update_file_tabs)
         self.file_tabs.tab_changed.connect(self.image_panel._set_current_file)
+        self.file_tabs.close_file_requested.connect(self.on_close_file_requested)
         self.image_panel.emit_files()
 
         # create background widget (will contain image widget)
@@ -94,6 +95,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.open_settings_triggered.connect(self.open_settings_file)
         self.menu_bar.open_images_triggered.connect(self.open_image_files)
         self.menu_bar.save_settings_triggered.connect(self.save_settings_to_file)
+        self.menu_bar.close_files_triggered.connect(self.close_multiple_files)
         self.menu_bar.get_exit_action().triggered.connect(self.close)
         # View signals
         self.menu_bar.theme_changed.connect(self.refresh_style)
@@ -152,6 +154,10 @@ class MainWindow(QMainWindow):
         self.file_tabs.set_files(image_files, seg_files)
         self.file_tabs.set_current_file(current_file)
     
+    def on_close_file_requested(self, path: Path):
+        """Relay a file close request from `FileTabSelector` to `ImagePanel`."""
+        self.image_panel.remove_files([path])
+    
     def open_image_files(self):
         """Show file dialog to open image files."""
         file_names, _ = QFileDialog.getOpenFileNames(
@@ -186,6 +192,10 @@ class MainWindow(QMainWindow):
         )
         if file_name:
             write_state(self.get_app_state(), Path(file_name))
+    
+    def close_multiple_files(self, file_paths: list[Path]):
+        """Close multiple user-requested files."""
+        self.image_panel.remove_files(file_paths)
 
     def refresh_style(self, theme: str):
         """Set the app style sheet according to the given theme."""

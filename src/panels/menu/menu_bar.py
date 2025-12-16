@@ -24,6 +24,7 @@ from panels.image.image_panel import ImagePanel
 from panels.process.process_panel import ProcessPanel
 from panels.settings.settings_panel import SettingsPanel
 from panels.output.output_panel import OutputPanel
+from panels.menu.remove_files_dialog import RemoveFilesDialog
 
 class MenuBar(QMenuBar):
 
@@ -51,6 +52,9 @@ class MenuBar(QMenuBar):
     save_settings_triggered = Signal()
     """Emits when the user requests to save the current settings."""
 
+    close_files_triggered = Signal(list)
+    """Emits list of `Path`s when user requests to close multiple files."""
+
     def __init__(self, 
                  app_state: AppState,
                  image_panel: ImagePanel,
@@ -71,6 +75,7 @@ class MenuBar(QMenuBar):
         # === the actual menu ==
         # -- file --
         file_menu = self.addMenu("File")
+        # open
         open_file_menu = file_menu.addMenu("Open...")
 
         open_settings_action = QAction("Settings file", self)
@@ -86,6 +91,7 @@ class MenuBar(QMenuBar):
             open_seg_action
         ])
 
+        # save
         save_file_menu = file_menu.addMenu("Save...")
 
         save_settings_action = QAction("Current settings", self)
@@ -97,6 +103,12 @@ class MenuBar(QMenuBar):
             save_image_view_action
         ])
 
+        # close files
+        close_files_action = QAction("Close multiple files", self)
+        close_files_action.triggered.connect(self._handle_close_files)
+        file_menu.addAction(close_files_action)
+
+        # exit
         file_menu.addSeparator()
 
         self.exit_action = QAction("Exit", self)
@@ -159,6 +171,28 @@ class MenuBar(QMenuBar):
         self.reset_view_action = QAction("Reset View", self)
         self.reset_view_action.triggered.connect(self.reset_view_triggered.emit)
         view_menu.addAction(self.reset_view_action)
+    
+    def _handle_close_files(self):
+        """Show dialog for selecting files to close."""
+        image_files = self.image_panel.get_image_files()
+        seg_files = self.image_panel.get_seg_files()
+        if not image_files and not seg_files:
+            return 
+        
+        dialog = RemoveFilesDialog(
+            image_files=image_files,
+            seg_files=seg_files,
+            parent=self,
+        )
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+
+        images_to_remove = dialog.selected_image_files()
+        segs_to_remove = dialog.selected_seg_files()
+        if not images_to_remove and not segs_to_remove:
+            return
+        
+        self.close_files_triggered.emit(images_to_remove + segs_to_remove)
     
     def _update_process_visibility(self, toggle: bool = False):
         """Update the `ProcessPanel`'s visibility, action, and emit signal."""
