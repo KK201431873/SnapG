@@ -60,6 +60,7 @@ class MainWindow(QMainWindow):
         # File tabs
         self.file_tabs = FileTabSelector(app_state)
         self.image_panel.files_changed.connect(self.update_file_tabs)
+        self.file_tabs.tab_changed.connect(self.image_panel._set_current_file)
         self.image_panel.emit_files()
 
         # create background widget (will contain image widget)
