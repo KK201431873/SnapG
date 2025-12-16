@@ -1,7 +1,13 @@
+"""Utility and data classes used throughout the app."""
+from PySide6.QtCore import (
+    QObject,
+    Signal
+)
+
 from pydantic import BaseModel, ConfigDict
-from pathlib import Path
 import numpy.typing as npt
 import numpy as np
+
 
 class View(BaseModel):
     """Data class to store view options."""
@@ -293,3 +299,56 @@ class FileMan():
             bool: Whether the given file extension represents an image.
         """
         return extension in FileMan.image_extensions()
+
+
+class Logger(QObject):
+    """Connects to `OutputPanel`'s text display and can be used anywhere to print logs."""
+
+    printTriggered = Signal(str, bool, bool, bool, str)
+    """Append a string to the text display."""
+
+    clearTriggered = Signal()
+    """Clear the text display."""
+
+    def print(self, 
+              s: str, 
+              bold: bool = False,
+              italic: bool = False,
+              underline: bool = False,
+              color: str = "black"
+        ):
+        """
+        Append a string to the text display.
+        Params:
+            s (str): String to display.
+            bold (bool): Bold option.
+            italic (bool): Italic option.
+            underline (bool): Underline option.
+            color (str): Standard HTML color.
+        """
+        self.printTriggered.emit(str(s), bold, italic, underline, color)
+    
+    def println(self, 
+              s: str, 
+              bold: bool = False,
+              italic: bool = False,
+              underline: bool = False,
+              color: str = "black"
+        ):
+        """
+        Append a string followed by a newline to the text display.
+        Params:
+            s (str): String to display.
+            bold (bool): Bold option.
+            italic (bool): Italic option.
+            underline (bool): Underline option.
+            color (str): Standard HTML color.
+        """
+        self.print(str(s) + "\n", bold, italic, underline, color)
+    
+    def clear(self):
+        """Clear the text display."""
+        self.clearTriggered.emit()
+
+# Create singleton instance of Logger
+logger = Logger()

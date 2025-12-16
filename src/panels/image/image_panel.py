@@ -21,7 +21,7 @@ from panels.settings.settings_panel import SettingsPanel
 from panels.image.image_view import ImageView
 from panels.image.imgproc_worker import ImgProcWorker
 
-from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings, FileMan
+from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings, FileMan, logger
 
 from pathlib import Path
 from enum import Enum
@@ -165,6 +165,16 @@ class ImagePanel(QWidget):
             self.image_view.clear_image()
             self.emit_files()
     
+    def _log_file_name(self):
+        """Print the current file name to output."""
+        if self.current_file is None:
+            logger.clear()
+            logger.println("No File Selected")
+        else:
+            logger.clear()
+            logger.print("File: ", bold=True)
+            logger.println(self.current_file.name)
+    
     def _set_current_file(self, 
                           file_path: Path, 
                           is_image: bool
@@ -175,6 +185,7 @@ class ImagePanel(QWidget):
             kept (bool): Whether the file was kept.
         """
         if file_path == self.current_file:
+            self._log_file_name()
             return True
 
         valid = self._validate_file(file_path)
@@ -185,6 +196,7 @@ class ImagePanel(QWidget):
             if file_path in self.seg_files:
                 self.seg_files.remove(file_path)
                 self.emit_files()
+            self._log_file_name()
             return False
         
         # update lists
@@ -203,6 +215,7 @@ class ImagePanel(QWidget):
         
         # emit signal
         self.emit_files()
+        self._log_file_name()
         return True
 
     def _validate_file(self, file_path: Path) -> bool:
@@ -328,9 +341,14 @@ class ImagePanel(QWidget):
         self.display_image = image
         self.current_seg_data = seg_data
         self.image_view.set_image(self.display_image)
+        self._log_file_name()
+        logger.println(f"{len(seg_data)} axons found.")
 
     def _on_processing_error(self, message: str):
         """Handle worker thread errors."""
+        self._log_file_name()
+        logger.println(f"ERROR While Processing!", bold=True, color="red")
+        logger.println(message, color="red")
         QMessageBox.critical(self, "Processing Error", message)
     
     def set_image_view(self, image_panel_state: ImagePanelState):

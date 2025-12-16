@@ -49,9 +49,9 @@ class ScrollableTabBar(QTabBar):
         
         # simulate clicking
         if event.angleDelta().y() > 0:
-            right_btn.click()
-        else:
             left_btn.click()
+        else:
+            right_btn.click()
         event.accept()
 
 class FileTabSelector(QTabWidget):
