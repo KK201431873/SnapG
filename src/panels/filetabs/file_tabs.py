@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QToolButton
 )
 
-from models import AppState
+from models import AppState, FileMan
 from pathlib import Path
 
 class PathWidget(QWidget):
@@ -74,7 +74,7 @@ class FileTabSelector(QTabWidget):
         self.setDocumentMode(True)
 
         # minimum width
-        self.setStyleSheet("QTabBar::tab { min-width: 100px; }")
+        self.setStyleSheet("QTabBar::tab { min-width: 100px; min-height: 30px }")
 
         # tab state signals
         self.currentChanged.connect(self._broadcast_tab_changed)
@@ -150,6 +150,11 @@ class FileTabSelector(QTabWidget):
         widget = PathWidget(tab_path)
         index = self.addTab(widget, tab_path.name)
         self.setTabToolTip(index, tab_path.name)
+        extension = tab_path.suffix.lower()
+        if extension == ".seg":
+            self.setTabIcon(index, QIcon("assets/seg_file_icon.ico"))
+        if FileMan.is_image(extension):
+            self.setTabIcon(index, QIcon("assets/image_icon.ico"))
         return index
     
     def _get_tab_paths(self) -> list[Path | None]:

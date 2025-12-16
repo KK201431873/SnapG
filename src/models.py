@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from pathlib import Path
 import numpy.typing as npt
 import numpy as np
 
@@ -275,3 +276,20 @@ class SegmentationData(BaseModel):
 
     selected_states: list[bool]
     """List of toggle states for each axon."""
+
+
+class FileMan():
+    """Utility class for file management."""
+
+    @staticmethod
+    def image_extensions() -> set[str]:
+        """Return a set of valid image extension strings."""
+        return {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.seg'}
+
+    @staticmethod
+    def is_image(extension: str) -> bool:
+        """
+        Returns:
+            bool: Whether the given file extension represents an image.
+        """
+        return extension in FileMan.image_extensions()

@@ -21,7 +21,7 @@ from panels.settings.settings_panel import SettingsPanel
 from panels.image.image_view import ImageView
 from panels.image.imgproc_worker import ImgProcWorker
 
-from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings
+from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings, FileMan
 
 from pathlib import Path
 from enum import Enum
@@ -211,9 +211,9 @@ class ImagePanel(QWidget):
         Returns:
             valid (bool): The file's validity.
         """
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.seg'}
-        valid = file_path.is_file() and file_path.suffix.lower() in image_extensions
-        if valid and file_path.suffix.lower() == ".seg":
+        extension = file_path.suffix.lower()
+        valid = file_path.is_file() and FileMan.is_image(extension)
+        if valid and extension == ".seg":
             # Try reading the .SEG file
             seg_data = self._get_segmentation_data(file_path)
             valid &= seg_data != None
