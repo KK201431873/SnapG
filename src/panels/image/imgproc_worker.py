@@ -90,7 +90,7 @@ class ImgProcWorker(QObject):
                 nm_per_pixel = (
                     settings.scale
                     if settings.scale_units == "nm"
-                    else settings.scale / 1000
+                    else settings.scale * 1000
                 )
 
                 result, seg_data = process_image(

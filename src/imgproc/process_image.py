@@ -232,29 +232,34 @@ def process_image(
         else:
             smallest = np.partition(nonzero_vals, n - 1)[:n]
 
-        thickness = np.percentile(smallest, thickness_percentile) # type: ignore
+        thickness_px = np.percentile(smallest, thickness_percentile) # type: ignore
 
         ### generate visualization ###
-        offset_mask = (dist <= thickness).astype(np.uint8) * 255
+        offset_mask = (dist <= thickness_px).astype(np.uint8) * 255
         outer_contour, _ = cv2.findContours(offset_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        inner_contour = [contour]
+
+        dist_inner = cv2.distanceTransform(offset_mask, cv2.DIST_L2, 5)
+        offset_mask_eroded = (dist_inner > thickness_px).astype(np.uint8) * 255
+        inner_contour, _ = cv2.findContours(offset_mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Calculate g-ratio & circularity
-        contour_perimeter = cv2.arcLength(inner_contour[0], True)
-        radius = contour_perimeter / TWO_PI
+        inner_contour_perimeter = cv2.arcLength(inner_contour[0], True)
+        inner_radius = inner_contour_perimeter / TWO_PI
+        outer_radius = cv2.arcLength(outer_contour[0], True) / TWO_PI
 
-        g_ratio = radius / (radius + thickness)
+        g_ratio = inner_radius / outer_radius
         circularity = (
-            4 * math.pi * cv2.contourArea(inner_contour[0]) / (contour_perimeter ** 2)
-            if contour_perimeter != 0 else 0
+            4 * math.pi * cv2.contourArea(inner_contour[0]) / (inner_contour_perimeter ** 2)
+            if inner_contour_perimeter != 0 else 0
         )
 
-        inner_diameter = (2 * radius) * nm_per_pixel * resolution_divisor
-        outer_diameter = inner_diameter + 2 * thickness * nm_per_pixel * resolution_divisor
+        inner_diameter = (2 * inner_radius) * nm_per_pixel * resolution_divisor
+        outer_diameter = (2 * outer_radius) * nm_per_pixel * resolution_divisor
+        thickness = thickness_px * nm_per_pixel * resolution_divisor
 
-        # Draw contour and label thickness on output image
+        # Draw contours on output image
         offset = np.array([[[x_min, y_min]]])
-        cv2.drawContours(out_img, inner_contour, -1, (0, 255, 0), draw_scale)
+        cv2.drawContours(out_img, inner_contour + offset, -1, (0, 255, 0), draw_scale)
         cv2.drawContours(out_img, outer_contour + offset, -1, (0, 255, 0), draw_scale)
 
         # text
@@ -285,9 +290,7 @@ def process_image(
             )
 
             inner_text = (
-                f"ø{int(round(inner_diameter))}nm"
-                if round(inner_diameter) < 1000
-                else f"ø{inner_diameter/1000:.2f}μm"
+                f"G:{g_ratio:.2f}"
             )
 
             draw_text(

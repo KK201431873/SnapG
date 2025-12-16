@@ -74,7 +74,7 @@ class FileTabSelector(QTabWidget):
         self.setDocumentMode(True)
 
         # minimum width
-        self.setStyleSheet("QTabBar::tab { min-width: 100px; min-height: 30px }")
+        self.setStyleSheet("QTabBar::tab { min-width: 125px; min-height: 30px }")
 
         # tab state signals
         self.currentChanged.connect(self._broadcast_tab_changed)
