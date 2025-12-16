@@ -357,26 +357,28 @@ class ImagePanel(QWidget):
         self.processing = active
         self.image_view.set_processing(active)
 
-    def _on_processing_finished(self, image: np.ndarray, seg_data):
+    def _on_processing_finished(self, image: np.ndarray, contour_data_list: list[ContourData] | None):
         """Receive worker thread results and set display image."""
         self.display_image = image
-        self.current_seg_data = seg_data
         self.image_view.set_image(self.display_image)
 
         # log data
         self._log_file_name()
-        logger.println(f"{len(seg_data)} axons found.\n")
-        if len(seg_data) == 0:
+        if contour_data_list is None:
+            return
+        
+        logger.println(f"{len(contour_data_list)} axons found.\n")
+        if len(contour_data_list) == 0:
             return
 
-        mean_g_ratio = round(np.mean([d[1] for d in seg_data]), 3)
+        mean_g_ratio = round(np.mean([d.g_ratio for d in contour_data_list]), 3)
         logger.print("Mean G-ratio", underline=True)
         logger.print(": ")
         logger.println(f"{mean_g_ratio}\n", color="gray")
 
         units = "µm" if self.settings is None else self.settings.scale_units
-        mean_inner_dia = np.mean([d[3] for d in seg_data])
-        mean_outer_dia = np.mean([d[4] for d in seg_data])
+        mean_inner_dia = np.mean([d.inner_diameter for d in contour_data_list])
+        mean_outer_dia = np.mean([d.outer_diameter for d in contour_data_list])
         logger.println("Mean diameters", underline=True)
         if units == "µm":
             mean_inner_dia /= 1000.0
@@ -387,25 +389,18 @@ class ImagePanel(QWidget):
         logger.println(f"{round(mean_outer_dia, 3)} {units}\n", color="gray")
 
         logger.println("Detections", underline=True)
-        for (
-            ID,
-            gratio,
-            circularity,
-            inner_diameter,
-            outer_diameter,
-            myelin_thickness
-        ) in seg_data:
+        for contour_data in contour_data_list:
             if units == "µm":
-                inner_diameter /= 1000.0
-                outer_diameter /= 1000.0
-                myelin_thickness /= 1000.0
+                contour_data.inner_diameter /= 1000.0
+                contour_data.outer_diameter /= 1000.0
+                contour_data.thickness /= 1000.0
 
-            logger.println(f"|   Axon {ID}")
-            logger.print("|       g-ratio: "); logger.println(f"{round(gratio, 3)}", color="gray")
-            logger.print("|       circularity: "); logger.println(f"{round(circularity, 3)}", color="gray")
-            logger.print("|       inner diameter: "); logger.println(f"{round(inner_diameter, 3)} {units}", color="gray")
-            logger.print("|       outer diameter: "); logger.println(f"{round(outer_diameter, 3)} {units}", color="gray")
-            logger.print("|       myelin thickness: "); logger.println(f"{round(myelin_thickness, 3)} {units}", color="gray")
+            logger.println(f"|   Axon {contour_data.ID}")
+            logger.print("|       g-ratio: "); logger.println(f"{round(contour_data.g_ratio, 3)}", color="gray")
+            logger.print("|       circularity: "); logger.println(f"{round(contour_data.circularity, 3)}", color="gray")
+            logger.print("|       inner diameter: "); logger.println(f"{round(contour_data.inner_diameter, 3)} {units}", color="gray")
+            logger.print("|       outer diameter: "); logger.println(f"{round(contour_data.outer_diameter, 3)} {units}", color="gray")
+            logger.print("|       myelin thickness: "); logger.println(f"{round(contour_data.thickness, 3)} {units}", color="gray")
             logger.println("|")
 
     def _on_processing_error(self, message: str):

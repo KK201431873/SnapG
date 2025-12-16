@@ -1,3 +1,5 @@
+from models import ContourData
+
 import cv2
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +42,7 @@ def process_image(
         thickness_percentile: int,
         stop_flag,
         verbose = False
-    ):
+    ) -> tuple[npt.NDArray, list[ContourData] | None]:
     h, w = input_image.shape
     linear_correction_ratio = 1.0 / resolution_divisor
     area_correction_ratio = linear_correction_ratio ** 2
@@ -86,7 +88,7 @@ def process_image(
     eroded = cv2.morphologyEx(dilated, cv2.MORPH_ERODE, erode_kernel)
 
     if show_thresholded:
-        return eroded, []
+        return eroded, None # None means don't analyze data
     
     if verbose:
         now = time.perf_counter()
@@ -154,7 +156,7 @@ def process_image(
         print(f"drawing {len(filtered_contours)} contours")
     start_time = now
 
-    data = []  # (ID, gratio, circularity, inner_diameter, outer_diameter, myelin_thickness)
+    data: list[ContourData] = []
 
     TWO_PI = 2 * math.pi
     img_h = input_image.shape[0]
@@ -305,13 +307,15 @@ def process_image(
         out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
 
         # Store results
-        data.append((
-            i + 1,
-            float(g_ratio),
-            float(circularity),
-            float(inner_diameter),
-            float(outer_diameter),
-            float(thickness)
+        data.append(ContourData(
+            ID = i + 1,
+            inner_contour=inner_contour[0],
+            outer_contour=outer_contour[0],
+            g_ratio=float(g_ratio),
+            circularity=float(circularity),
+            inner_diameter=float(inner_diameter),
+            outer_diameter=float(outer_diameter),
+            thickness=float(thickness)
         ))
 
         # give up if taking too long (>5s)
@@ -340,7 +344,7 @@ def process_image(
         draw_text("resolution divider", 0, 6*size, (0,0,0), font, shadow=True)
         draw_text("or minimum size)", 0, 7.5*size, (0,0,0), font, shadow=True)
         out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
-        return out_img, []
+        return out_img, data
     
     if verbose:
         now = time.perf_counter()

@@ -77,7 +77,7 @@ class ImgProcWorker(QObject):
         try:
             if settings.show_original:
                 result = image
-                seg_data = None
+                contour_data_list = None # None means don't analyze data
             else:
                 resized = cv2.resize(
                     image,
@@ -93,7 +93,7 @@ class ImgProcWorker(QObject):
                     else settings.scale * 1000
                 )
 
-                result, seg_data = process_image(
+                result, contour_data_list = process_image(
                     resized,
                     settings.resolution_divisor,
                     settings.show_threshold,
@@ -111,7 +111,7 @@ class ImgProcWorker(QObject):
                     stop_flag=lambda: self._stop_requested
                 )
 
-            self.finished.emit(result, seg_data)
+            self.finished.emit(result, contour_data_list)
 
         except Exception as e:
             self.error.emit(traceback.format_exc())
