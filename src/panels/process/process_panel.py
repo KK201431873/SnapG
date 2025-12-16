@@ -58,5 +58,5 @@ class ProcessPanel(QWidget):
         if dialog.exec() != dialog.DialogCode.Accepted:
             return
 
-        # update internal state
+        # update internal state if user pressed OK
         self.chosen_images = dialog.get_chosen_images()
