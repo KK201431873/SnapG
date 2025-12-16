@@ -8,7 +8,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout, 
     QTextEdit,
-    QLabel
+    QLabel,
+    QGroupBox
 )
 
 from panels.settings.scale_parameter import ScaleParameter
@@ -32,8 +33,7 @@ class SettingsPanel(QWidget):
         # init vertical layout
         self.vlayout = QVBoxLayout(self)
         self.vlayout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.vlayout.setSpacing(0)
-        self.vlayout.setContentsMargins(1, 0, 0, 0)
+        self.vlayout.setSpacing(10)
 
         # params
         self.scale_prm_widget = ScaleParameter(settings.scale, settings.scale_units)
@@ -55,21 +55,35 @@ class SettingsPanel(QWidget):
         self.circularity_prm_widget = self.new_slider("Circularity", settings.circularity, 0.01, (0, 1))
         self.thick_percent_prm_widget = self.new_slider("Thickness %ile", settings.thickness_percentile, 1, (0, 100))
         
-        # show visually
-        self.vlayout.addWidget(self.scale_prm_widget)
-        self.vlayout.addWidget(self.res_divisor_prm_widget)
-        self.vlayout.addWidget(self.show_orig_prm_widget)
-        self.vlayout.addWidget(self.show_thresh_prm_widget)
-        self.vlayout.addWidget(self.show_text_prm_widget)
-        self.vlayout.addWidget(self.thresh_prm_widget)
-        self.vlayout.addWidget(self.radius_prm_widget)
-        self.vlayout.addWidget(self.dilate_prm_widget)
-        self.vlayout.addWidget(self.erode_prm_widget)
-        self.vlayout.addWidget(self.min_size_prm_widget)
-        self.vlayout.addWidget(self.max_size_prm_widget)
-        self.vlayout.addWidget(self.convexity_prm_widget)
-        self.vlayout.addWidget(self.circularity_prm_widget)
-        self.vlayout.addWidget(self.thick_percent_prm_widget)
+        # image controls
+        image_controls_box = QGroupBox("Image Controls")
+        image_controls_layout = QVBoxLayout(image_controls_box)
+        image_controls_layout.setContentsMargins(0, 5, 0, 5)
+        self.vlayout.addWidget(image_controls_box)
+
+        image_controls_layout.addWidget(self.scale_prm_widget)
+        image_controls_layout.addWidget(self.res_divisor_prm_widget)
+        image_controls_layout.addWidget(self.show_orig_prm_widget)
+        image_controls_layout.addWidget(self.show_thresh_prm_widget)
+        image_controls_layout.addWidget(self.show_text_prm_widget)
+
+
+        # opencv parameters
+        opencv_parameters_box = QGroupBox("OpenCV Parameters")
+        opencv_parameters_layout = QVBoxLayout(opencv_parameters_box)
+        opencv_parameters_layout.setContentsMargins(0, 5, 0, 5)
+        self.vlayout.addWidget(opencv_parameters_box)
+
+        opencv_parameters_layout.addWidget(self.thresh_prm_widget)
+        opencv_parameters_layout.addWidget(self.radius_prm_widget)
+        opencv_parameters_layout.addWidget(self.dilate_prm_widget)
+        opencv_parameters_layout.addWidget(self.erode_prm_widget)
+        opencv_parameters_layout.addWidget(self.min_size_prm_widget)
+        opencv_parameters_layout.addWidget(self.max_size_prm_widget)
+        opencv_parameters_layout.addWidget(self.convexity_prm_widget)
+        opencv_parameters_layout.addWidget(self.circularity_prm_widget)
+        opencv_parameters_layout.addWidget(self.thick_percent_prm_widget)
+        
         
         # add layout to current widget
         self.setLayout(self.vlayout)

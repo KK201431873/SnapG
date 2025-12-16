@@ -10,8 +10,11 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QGroupBox,
-    QWidget
+    QWidget,
+    QCheckBox
 )
+
+from panels.checkable_list import CheckableListWidget
 
 class RemoveFilesDialog(QDialog):
     def __init__(
@@ -28,6 +31,7 @@ class RemoveFilesDialog(QDialog):
 
         main_layout = QVBoxLayout(self)
 
+        # list
         list_widget = QWidget()
         list_layout = QHBoxLayout(list_widget)
         list_layout.setStretch(0, 1)
@@ -75,13 +79,18 @@ class RemoveFilesDialog(QDialog):
         group = QGroupBox(title)
         layout = QVBoxLayout(group)
 
-        list_widget = QListWidget()
-        list_widget.setSelectionMode(QListWidget.SelectionMode.NoSelection)
+        # multi-checkbox
+        multi_checkbox = QCheckBox()
+        layout.addWidget(multi_checkbox)
+
+        # list
+        list_widget = CheckableListWidget()
+        list_widget.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
 
         for path in files:
             item = QListWidgetItem(path.name)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Checked)
+            item.setCheckState(Qt.CheckState.Unchecked)
             item.setData(Qt.ItemDataRole.UserRole, path)
             list_widget.addItem(item)
 

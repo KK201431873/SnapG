@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QDockWidget, 
     QWidget,
     QScrollArea,
-    QFrame
+    QFrame,
+    QMessageBox
 )
 
 from models import AppState
@@ -212,6 +213,11 @@ class MenuBar(QMenuBar):
         image_files = self.image_panel.get_image_files()
         seg_files = self.image_panel.get_seg_files()
         if not image_files and not seg_files:
+            QMessageBox.warning(
+                self,
+                "Close Files",
+                "There are no files to close."
+            )
             return 
         
         dialog = RemoveFilesDialog(
