@@ -5,7 +5,8 @@ from PySide6.QtCore import (
     SignalInstance
 )
 from PySide6.QtGui import (
-    QAction
+    QAction,
+    QKeySequence
 )
 from PySide6.QtWidgets import (
     QMenuBar,
@@ -77,9 +78,10 @@ class MenuBar(QMenuBar):
 
         # === the actual menu ==
         # -- file --
-        file_menu = self.addMenu("File")
+        self.file_menu = self.addMenu("File")
+
         # open
-        open_file_menu = file_menu.addMenu("Open...")
+        self.open_file_menu = self.file_menu.addMenu("Open...")
 
         open_settings_action = QAction("Settings file", self)
         open_settings_action.triggered.connect(self.open_settings_triggered.emit)
@@ -88,14 +90,22 @@ class MenuBar(QMenuBar):
         open_image_action.triggered.connect(self.open_images_triggered.emit)
         
         open_seg_action = QAction("Segmentation file(s)", self)
-        open_file_menu.addActions([
+
+        self.open_file_menu.addActions([
             open_settings_action, 
             open_image_action, 
             open_seg_action
         ])
+        # Ctrl+O shortcut
+        open_menu_shortcut = QAction(self)
+        open_menu_shortcut.setShortcut(QKeySequence("Ctrl+O"))
+        open_menu_shortcut.triggered.connect(
+            lambda: self._popup_submenu(self.open_file_menu)
+        )
+        self.addAction(open_menu_shortcut)
 
         # save
-        save_file_menu = file_menu.addMenu("Save...")
+        self.save_file_menu = self.file_menu.addMenu("Save...")
 
         save_settings_action = QAction("Current settings", self)
         save_settings_action.triggered.connect(self.save_settings_triggered.emit)
@@ -103,21 +113,28 @@ class MenuBar(QMenuBar):
         save_image_view_action = QAction("Current image view", self)
         save_image_view_action.triggered.connect(self.save_image_view_triggered.emit)
 
-        save_file_menu.addActions([
+        self.save_file_menu.addActions([
             save_settings_action, 
             save_image_view_action
         ])
+        # Ctrl+S shortcut
+        save_menu_shortcut = QAction(self)
+        save_menu_shortcut.setShortcut(QKeySequence("Ctrl+S"))
+        save_menu_shortcut.triggered.connect(
+            lambda: self._popup_submenu(self.save_file_menu)
+        )
+        self.addAction(save_menu_shortcut)
 
         # close files
         close_files_action = QAction("Close multiple files", self)
         close_files_action.triggered.connect(self._handle_close_files)
-        file_menu.addAction(close_files_action)
+        self.file_menu.addAction(close_files_action)
 
         # exit
-        file_menu.addSeparator()
+        self.file_menu.addSeparator()
 
         self.exit_action = QAction("Exit", self)
-        file_menu.addAction(self.exit_action)
+        self.file_menu.addAction(self.exit_action)
 
         # -- view --
         view_menu = self.addMenu("View")
@@ -176,6 +193,19 @@ class MenuBar(QMenuBar):
         self.reset_view_action = QAction("Reset view", self)
         self.reset_view_action.triggered.connect(self.reset_view_triggered.emit)
         view_menu.addAction(self.reset_view_action)
+    
+    def _popup_submenu(self, submenu: QMenu):
+        """Show the given menu."""
+        # open File menu
+        file_action = self.file_menu.menuAction()
+        file_rect = self.actionGeometry(file_action)
+        file_pos = self.mapToGlobal(file_rect.bottomLeft())
+
+        self.file_menu.popup(file_pos)
+
+        # open submenu
+        submenu_action = submenu.menuAction()
+        self.file_menu.setActiveAction(submenu_action)
     
     def _handle_close_files(self):
         """Show dialog for selecting files to close."""
