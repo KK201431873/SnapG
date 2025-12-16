@@ -6,13 +6,19 @@ from PySide6.QtCore import (
     QSignalBlocker
 )
 from PySide6.QtGui import (
-    QIcon
+    QIcon,
+    QWheelEvent,
+    QShortcut,
+    QKeySequence
 )
 from PySide6.QtWidgets import (
     QApplication,
     QTabWidget,
     QLabel,
-    QWidget
+    QWidget,
+    QTabBar,
+    QMessageBox,
+    QToolButton
 )
 
 from models import AppState
@@ -27,6 +33,26 @@ class PathWidget(QWidget):
     def get_path(self) -> Path:
         """Return this `PathWidget`'s path."""
         return self.path
+    
+class ScrollableTabBar(QTabBar):
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.setExpanding(False)
+        self.setUsesScrollButtons(True)
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        # try finding scroll buttons
+        buttons = self.findChildren(QToolButton)
+        if len(buttons) < 2:
+            return super().wheelEvent(event)
+        left_btn, right_btn = buttons[0], buttons[1]
+        
+        # simulate clicking
+        if event.angleDelta().y() > 0:
+            right_btn.click()
+        else:
+            left_btn.click()
+        event.accept()
 
 class FileTabSelector(QTabWidget):
 
@@ -40,7 +66,8 @@ class FileTabSelector(QTabWidget):
         super().__init__()
         self.setObjectName("FileTabs")
 
-        # config
+        # -- config --
+        self.setTabBar(ScrollableTabBar(self))
         self.setTabsClosable(True)
         self.setMovable(True)
         self.setElideMode(Qt.TextElideMode.ElideRight)
@@ -49,8 +76,24 @@ class FileTabSelector(QTabWidget):
         # minimum width
         self.setStyleSheet("QTabBar::tab { min-width: 100px; }")
 
+        # tab state signals
         self.currentChanged.connect(self._broadcast_tab_changed)
         self.tabCloseRequested.connect(self._request_close_tab)
+        
+        # -- shortcuts --
+        # Ctrl+Tab moves to next tab
+        next_tab = QShortcut(QKeySequence("Ctrl+Tab"), self)
+        next_tab.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        next_tab.activated.connect(self._next_tab)
+
+        # Ctrl+Shift+Tab moves to previous tab
+        prev_tab = QShortcut(QKeySequence("Ctrl+Shift+Tab"), self)
+        prev_tab.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        prev_tab.activated.connect(self._prev_tab)
+
+        close_shortcut = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_shortcut.setContext(Qt.ShortcutContext.ApplicationShortcut)
+        close_shortcut.activated.connect(lambda: self._request_close_tab(self.currentIndex()))
 
     def set_files(self, image_files: list[Path], seg_files: list[Path]):
         """Update the current file tabs with the given set of image and segmentation files."""
@@ -134,14 +177,44 @@ class FileTabSelector(QTabWidget):
     
     def _request_close_tab(self, index: int):
         """Emit signal to tell `ImagePanel` that a tab wants to be closed."""
+        def show_close_error():
+            QMessageBox.warning(
+                self,
+                "Close File",
+                "There is no file to close."
+            )
+
         paths = self._get_tab_paths()
         if not (0 <= index <= len(paths) - 1):
+            show_close_error()
             return # sanity check
         
         path = paths[index]
         if path is None:
+            show_close_error()
             return
         
+        reply = QMessageBox.question(
+            self,
+            "Close File",
+            f"Close '{path.name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
         # send signal
-        self.close_file_requested.emit(path)
+        if reply == QMessageBox.StandardButton.Yes:
+            self.close_file_requested.emit(path)
+    
+    def _next_tab(self):
+        """Go to next tab."""
+        if self.count() == 0:
+            return
+        self.setCurrentIndex((self.currentIndex() + 1) % self.count())
+
+    def _prev_tab(self):
+        """Go to previous tab."""
+        if self.count() == 0:
+            return
+        self.setCurrentIndex((self.currentIndex() - 1) % self.count())
 
