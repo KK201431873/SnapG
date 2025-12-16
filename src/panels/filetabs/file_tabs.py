@@ -100,7 +100,6 @@ class FileTabSelector(QTabWidget):
         if None in image_files or None in seg_files:
             return
         
-        start_index = self.currentIndex()
         with QSignalBlocker(self):
             paths = self._get_tab_paths()
 

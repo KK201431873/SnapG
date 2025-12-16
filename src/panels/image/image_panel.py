@@ -122,15 +122,34 @@ class ImagePanel(QWidget):
     
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
-        filtered_paths = list(set([p for p in image_paths if self._validate_file(p, remove=False)])) # cvt to set to remove duplicates
+        validated_paths = [p for p in image_paths if self._validate_file(p, remove=False)]
+        if len(validated_paths) == 0:
+            return
+
+        # remove duplicates within the given files
+        filtered_paths = [] 
+        for p in validated_paths:
+            if p not in filtered_paths:
+                filtered_paths.append(p)
+        if len(filtered_paths) == 0:
+            return # something mustve gone really wrong
+        
+        # remove files that are already opened
+        last_duplicate: Path | None = None
+        for p in self.image_files:
+            if p in filtered_paths:
+                last_duplicate = p
+                filtered_paths.remove(p) 
+        
+        # open the last new file, if empty then open the last duplicate file
         if len(filtered_paths) > 0:
-            for p in filtered_paths:
-                if p in self.image_files:
-                    self.image_files.remove(p) # remove existing duplicates
             self.image_files += filtered_paths
             self._set_current_file(filtered_paths[-1], is_image=True)
-            # request imgproc settings
-            self.settings_panel.emit_fields()
+        elif last_duplicate is not None:
+            self._set_current_file(last_duplicate, is_image=True)
+        
+        # request imgproc settings
+        self.settings_panel.emit_fields()
     
     def remove_files(self, file_paths: list[Path]):
         """Remove the given files."""
@@ -194,11 +213,13 @@ class ImagePanel(QWidget):
             kept (bool): Whether the file was kept.
         """
         if file_path == self.current_file:
+            self.emit_files()
             self._log_file_name()
             return True
 
         valid = self._validate_file(file_path, remove=True)
         if not valid:
+            self.emit_files()
             self._log_file_name()
             return False
         
