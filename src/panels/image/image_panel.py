@@ -27,6 +27,7 @@ from pathlib import Path
 from enum import Enum
 import numpy.typing as npt
 import numpy as np
+import traceback
 import pickle
 import cv2
 
@@ -87,6 +88,14 @@ class ImagePanel(QWidget):
         self.processing_thread.started.connect(self.worker.start)
         self.processing_thread.start()
 
+        # validate initial state
+        if self.current_file is not None: # current file
+            valid = self._validate_file(self.current_file, remove=True)
+            if not valid:
+                self.current_file = None
+        for p in self.image_files + self.seg_files: # all opened files
+            self._validate_file(p, remove=True)
+
         # sync other states
         self.update_image()
     
@@ -113,7 +122,7 @@ class ImagePanel(QWidget):
     
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
-        filtered_paths = list(set([p for p in image_paths if self._validate_file(p)])) # cvt to set to remove duplicates
+        filtered_paths = list(set([p for p in image_paths if self._validate_file(p, remove=False)])) # cvt to set to remove duplicates
         if len(filtered_paths) > 0:
             for p in filtered_paths:
                 if p in self.image_files:
@@ -188,14 +197,8 @@ class ImagePanel(QWidget):
             self._log_file_name()
             return True
 
-        valid = self._validate_file(file_path)
+        valid = self._validate_file(file_path, remove=True)
         if not valid:
-            if file_path in self.image_files:
-                self.image_files.remove(file_path)
-                self.emit_files()
-            if file_path in self.seg_files:
-                self.seg_files.remove(file_path)
-                self.emit_files()
             self._log_file_name()
             return False
         
@@ -218,7 +221,7 @@ class ImagePanel(QWidget):
         self._log_file_name()
         return True
 
-    def _validate_file(self, file_path: Path) -> bool:
+    def _validate_file(self, file_path: Path, remove: bool = False) -> bool:
         """
         Check if the given image or .SEG file is valid.
         Returns:
@@ -230,6 +233,7 @@ class ImagePanel(QWidget):
             # Try reading the .SEG file
             seg_data = self._get_segmentation_data(file_path)
             valid &= seg_data != None
+        
         # notify user if not valid
         if not valid:
             QMessageBox(
@@ -239,6 +243,13 @@ class ImagePanel(QWidget):
                 QMessageBox.StandardButton.Ok,
                 self
             ).exec()
+            if remove:
+                if file_path in self.image_files:
+                    self.image_files.remove(file_path)
+                    self.emit_files()
+                if file_path in self.seg_files:
+                    self.seg_files.remove(file_path)
+                    self.emit_files()
         return valid
 
     def receive_settings(self, settings: Settings):
@@ -292,18 +303,28 @@ class ImagePanel(QWidget):
                 selected_states=selected_states
             )
         except Exception as e:
+            self._log_file_name()
+            logger.println("Failed to read Segmentation File:", bold=True, color="red")
+            logger.println(traceback.format_exc(), color="red")
             return None
     
     def update_image(self):
         """Updates this panel's `ImageView` using the current file."""
         if self.current_file is None:
             return
-        
-        # retrieve image
+
+        # tune: read image file
         if self.mode == Mode.TUNE:
             if self.last_current_file is None or self.current_file != self.last_current_file:
-                self.current_original_image = cv2.imread(str(self.current_file))
+                try:
+                    self.current_original_image = cv2.imread(str(self.current_file))
+                except Exception as e:
+                    self._log_file_name()
+                    logger.println("Failed to read Image File:", bold=True, color="red")
+                    logger.println(traceback.format_exc(), color="red")
             self._process_current_image()
+        
+        # review: get image from seg file
         elif self.mode == Mode.REVIEW:
             self.current_seg_data = self._get_segmentation_data(self.current_file)
             if self.current_seg_data is not None:

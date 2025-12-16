@@ -57,9 +57,6 @@ class OutputPanel(QWidget):
         cursor.setCharFormat(fmt)
         cursor.insertText(s)
 
-        # self.text_browser.setTextCursor(cursor)
-        # self.text_browser.ensureCursorVisible()
-
     @Slot()
     def clear(self):
         """Clear the `OutputPanel`'s text display."""

@@ -119,11 +119,6 @@ class FileTabSelector(QTabWidget):
                 path = paths[i]
                 if path not in image_files and path not in seg_files:
                     self.removeTab(i)
-        
-        # emit signal if index changed
-        index = self.currentIndex()
-        if index != start_index:
-            self._broadcast_tab_changed(index)
 
     def set_current_file(self, current_file: Path):
         """Sets the currently selected file tab. Creates a new tab if `current_file` doesn't exist."""
