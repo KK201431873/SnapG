@@ -98,6 +98,19 @@ class ImagePanel(QWidget):
             self.current_file
         )
     
+    def get_current_file(self) -> Path | None:
+        """Returns the `Path` of the currently displayed file."""
+        if self.current_file is not None:
+            return Path(self.current_file)
+        return None
+
+    def get_display_image(self) -> npt.NDArray | None:
+        """Returns the currently displayed image."""
+        if self.display_image is not None:
+            return np.copy(self.display_image)
+        else:
+            return None
+    
     def add_images(self, image_paths: list[Path]):
         """Add new image files."""
         filtered_paths = list(set([p for p in image_paths if self._validate_file(p)])) # cvt to set to remove duplicates

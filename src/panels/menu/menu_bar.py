@@ -52,6 +52,9 @@ class MenuBar(QMenuBar):
     save_settings_triggered = Signal()
     """Emits when the user requests to save the current settings."""
 
+    save_image_view_triggered = Signal()
+    """Emits when the user requests to save the currently displayed image."""
+
     close_files_triggered = Signal(list)
     """Emits list of `Path`s when user requests to close multiple files."""
 
@@ -98,6 +101,8 @@ class MenuBar(QMenuBar):
         save_settings_action.triggered.connect(self.save_settings_triggered.emit)
 
         save_image_view_action = QAction("Current image view", self)
+        save_image_view_action.triggered.connect(self.save_image_view_triggered.emit)
+
         save_file_menu.addActions([
             save_settings_action, 
             save_image_view_action

@@ -136,16 +136,6 @@ def process_image(
         if circularity < circ_thresh:
             continue
 
-        # Check if scale label interferes with the contour
-        M = cv2.moments(c)
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-            x_limit = 290/1365*eroded.shape[0]
-            y_limit = eroded.shape[1]-165/1365*eroded.shape[1]
-            if cx<=x_limit and cy>= y_limit:
-                continue
-
         filtered_contours.append(c)
     
     # Create output color image for visualization

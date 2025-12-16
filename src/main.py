@@ -17,7 +17,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QApplication,
     QStyle,
-    QVBoxLayout
+    QVBoxLayout,
+    QMessageBox
 )
 
 from panels.image.image_panel import ImagePanel
@@ -35,6 +36,7 @@ from styles.style_manager import get_style_sheet
 from datetime import datetime
 from pathlib import Path
 import sys
+import cv2
 
 class MainWindow(QMainWindow):
     """SnapG Application Window."""
@@ -95,6 +97,7 @@ class MainWindow(QMainWindow):
         self.menu_bar.open_settings_triggered.connect(self.open_settings_file)
         self.menu_bar.open_images_triggered.connect(self.open_image_files)
         self.menu_bar.save_settings_triggered.connect(self.save_settings_to_file)
+        self.menu_bar.save_image_view_triggered.connect(self.save_image_to_file)
         self.menu_bar.close_files_triggered.connect(self.close_multiple_files)
         self.menu_bar.get_exit_action().triggered.connect(self.close)
         # View signals
@@ -159,7 +162,7 @@ class MainWindow(QMainWindow):
         self.image_panel.remove_files([path])
     
     def open_image_files(self):
-        """Show file dialog to open image files."""
+        """Show dialog to open image files."""
         file_names, _ = QFileDialog.getOpenFileNames(
             parent=self, 
             caption="Open Image(s)",
@@ -169,7 +172,7 @@ class MainWindow(QMainWindow):
         self.image_panel.add_images(file_paths)
 
     def open_settings_file(self):
-        """Show file dialog to open settings file."""
+        """Show dialog to open settings file."""
         file_name, _ = QFileDialog.getOpenFileName(
             parent=self, 
             caption="Open Settings",
@@ -181,7 +184,7 @@ class MainWindow(QMainWindow):
             self.settings_panel.set_settings(state.settings)
 
     def save_settings_to_file(self):
-        """Show file dialog to save settings to a file."""
+        """Show dialog to save settings to a file."""
         formatted_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
         file_name, _ = QFileDialog.getSaveFileName(
             parent=self, 
@@ -192,6 +195,25 @@ class MainWindow(QMainWindow):
         )
         if file_name:
             write_state(self.get_app_state(), Path(file_name))
+
+    def save_image_to_file(self):
+        """Show dialog to save current image view to a file."""
+        display_image = self.image_panel.get_display_image()
+        current_file = self.image_panel.get_current_file()
+        if display_image is None or current_file is None:
+            QMessageBox.warning(self, "Save Current Image", "There is no displayed image to save.")
+            return
+        
+        formatted_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
+        file_name, _ = QFileDialog.getSaveFileName(
+            parent=self, 
+            caption="Save Current Image",
+            dir=f"{current_file.stem}_SnapG_{formatted_datetime}.tif",
+            filter="TIF Files (*.tif)",
+            selectedFilter="TIF Files (*.tif)"
+        )
+        if file_name:
+            cv2.imwrite(file_name, display_image)
     
     def close_multiple_files(self, file_paths: list[Path]):
         """Close multiple user-requested files."""
