@@ -7,7 +7,8 @@ from PySide6.QtCore import (
     Slot
 )
 from PySide6.QtGui import (
-    QImage
+    QImage,
+    QCloseEvent
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -457,7 +458,7 @@ class ImagePanel(QWidget):
             view_image_width=self.image_view.get_image_width()
         )
     
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         if self.worker:
             self.worker.stop()
         self.processing_thread.quit()

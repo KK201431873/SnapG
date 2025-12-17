@@ -41,7 +41,7 @@ def process_image(
         circ_thresh: float,
         thickness_percentile: int,
         stop_flag,
-        font_path: Path,
+        font_path: Path | None,
         verbose = False,
         timed = False
     ) -> tuple[npt.NDArray, list[ContourData] | None]:
@@ -145,7 +145,10 @@ def process_image(
         filtered_contours.append(c)
     
     # Create output color image for visualization
-    out_img = cv2.cvtColor(input_image, cv2.COLOR_GRAY2BGR)
+    if font_path is not None:
+        out_img = cv2.cvtColor(input_image, cv2.COLOR_GRAY2BGR)
+    else:
+        out_img = np.zeros(0)
     
     # Create binary mask of all contours
     all_contours_mask = np.zeros_like(eroded)
@@ -167,7 +170,10 @@ def process_image(
     img_w = input_image.shape[1]
     draw_scale = int(8 * img_h / 4096)
 
-    font = ImageFont.truetype(font_path, max(15, int(15 * draw_scale)))
+    if font_path is not None:
+        font = ImageFont.truetype(font_path, max(15, int(15 * draw_scale)))
+    else:
+        font = None
 
     # Text drawing helper
     def draw_text(text, x, y, color, font, shadow=True):
@@ -240,12 +246,16 @@ def process_image(
         thickness_px = np.percentile(smallest, thickness_percentile) # type: ignore
 
         ### generate visualization ###
+        offset = np.array([[[x_min, y_min]]])
+
         offset_mask = (dist <= thickness_px).astype(np.uint8) * 255
         outer_contour, _ = cv2.findContours(offset_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        outer_contour += offset
 
         dist_inner = cv2.distanceTransform(offset_mask, cv2.DIST_L2, 5)
         offset_mask_eroded = (dist_inner > thickness_px).astype(np.uint8) * 255
         inner_contour, _ = cv2.findContours(offset_mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        inner_contour += offset
 
         # Calculate g-ratio & circularity
         inner_contour_perimeter = cv2.arcLength(inner_contour[0], True)
@@ -263,51 +273,51 @@ def process_image(
         thickness = thickness_px * nm_per_pixel * resolution_divisor
 
         # Draw contours on output image
-        offset = np.array([[[x_min, y_min]]])
-        cv2.drawContours(out_img, inner_contour + offset, -1, (0, 255, 0), draw_scale)
-        cv2.drawContours(out_img, outer_contour + offset, -1, (0, 255, 0), draw_scale)
+        if font is not None:
+            cv2.drawContours(out_img, inner_contour, -1, (0, 255, 0), draw_scale)
+            cv2.drawContours(out_img, outer_contour, -1, (0, 255, 0), draw_scale)
 
-        # text
-        cx_text = cx
-        cy_text = int(cy - 6 * draw_scale)
-        line_spacing = 14 * draw_scale
+            # text
+            cx_text = cx
+            cy_text = int(cy - 6 * draw_scale)
+            line_spacing = 14 * draw_scale
 
-        out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
+            out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
 
-        if show_text:
-            draw = ImageDraw.Draw(out_pil)
+            if show_text:
+                draw = ImageDraw.Draw(out_pil)
 
-            if img_h < 512:
-                x_corr = 5 * max(1, draw_scale)
-                y_corr = 10 * max(1, line_spacing)
-            else:
-                x_corr = 5 * draw_scale
-                y_corr = 0.5 * line_spacing
+                if img_h < 512:
+                    x_corr = 5 * max(1, draw_scale)
+                    y_corr = 10 * max(1, line_spacing)
+                else:
+                    x_corr = 5 * draw_scale
+                    y_corr = 0.5 * line_spacing
 
-            label = f"#{i+1}"
+                label = f"#{i+1}"
 
-            draw_text(
-                label,
-                int(cx_text - x_corr * len(label)),
-                int(cy_text - y_corr),
-                (0, 0, 0),
-                font
-            )
+                draw_text(
+                    label,
+                    int(cx_text - x_corr * len(label)),
+                    int(cy_text - y_corr),
+                    (0, 0, 0),
+                    font
+                )
 
-            inner_text = (
-                f"G:{g_ratio:.2f}"
-            )
+                inner_text = (
+                    f"G:{g_ratio:.2f}"
+                )
 
-            draw_text(
-                inner_text,
-                int(cx_text - x_corr * len(inner_text)),
-                int(cy_text + y_corr),
-                (255, 255, 0),
-                font,
-                shadow=False
-            )
+                draw_text(
+                    inner_text,
+                    int(cx_text - x_corr * len(inner_text)),
+                    int(cy_text + y_corr),
+                    (255, 255, 0),
+                    font,
+                    shadow=False
+                )
 
-        out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
+            out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
 
         # Store results
         data.append(ContourData(
@@ -328,7 +338,7 @@ def process_image(
                 give_up = True
 
     # Give up if too many contours
-    if give_up:
+    if give_up and font_path is not None:
         out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
         draw = ImageDraw.Draw(out_pil)
         img_size = max(img_w, img_h)

@@ -4,7 +4,8 @@ from PySide6.QtCore import (
     QEvent
 )
 from PySide6.QtGui import (
-    QIcon
+    QIcon,
+    QCloseEvent
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -36,6 +37,7 @@ from styles.style_manager import get_style_sheet
 
 from datetime import datetime
 from pathlib import Path
+import multiprocessing
 import sys
 import cv2
 
@@ -58,6 +60,7 @@ class MainWindow(QMainWindow):
         self.settings_panel = SettingsPanel(app_state)
         self.image_panel = ImagePanel(app_state, self.settings_panel)
         self.settings_panel.settings_changed.connect(self.image_panel.receive_settings)
+        self.settings_panel.settings_changed.connect(self.process_panel.receive_settings)
         self.settings_panel.emit_fields() # update ImagePanel
 
         # File tabs
@@ -250,9 +253,22 @@ class MainWindow(QMainWindow):
             [self.output_dock], [view.output_panel_height], Qt.Orientation.Vertical
         )
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
+        if self.process_panel.get_currently_processing():
+            reply = QMessageBox.question(
+                self,
+                "Exit",
+                f"Image batch is currently being processed. Are you sure you want to exit?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
         self.image_panel.closeEvent(event)
+        self.process_panel.closeEvent(event)
         write_state(self.get_app_state())
+        super().closeEvent(event)
 
     def get_app_state(self) -> AppState:
         """Returns the latest `AppState` object."""
@@ -274,8 +290,8 @@ class MainWindow(QMainWindow):
         )
 
         
-app_state: AppState
-if __name__=="__main__":
+def main():
+    global app_state, app
     app = QApplication([])
 
     # Load state
@@ -297,3 +313,9 @@ if __name__=="__main__":
 
     window.show()
     app.exec()
+
+app_state: AppState
+app: QApplication
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+    main()

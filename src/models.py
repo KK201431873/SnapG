@@ -214,6 +214,9 @@ class ProcessPanelState(BaseModel):
 
     use_multiprocessing: bool 
     """Whether to use multiprocessing for batch processing."""
+
+    output_text: str
+    """Text contained in the processing output window."""
     
     @staticmethod
     def from_dict(process_panel_state_dict: dict) -> 'ProcessPanelState':
@@ -221,7 +224,8 @@ class ProcessPanelState(BaseModel):
         return ProcessPanelState(
             chosen_images=process_panel_state_dict['chosen_images'],
             destination_path=process_panel_state_dict['destination_path'],
-            use_multiprocessing=process_panel_state_dict['use_multiprocessing']
+            use_multiprocessing=process_panel_state_dict['use_multiprocessing'],
+            output_text=process_panel_state_dict['output_text']
         )
     
     @staticmethod
@@ -230,7 +234,8 @@ class ProcessPanelState(BaseModel):
         return ProcessPanelState(
             chosen_images=[],
             destination_path="",
-            use_multiprocessing=True
+            use_multiprocessing=True,
+            output_text=""
         )
 
 
