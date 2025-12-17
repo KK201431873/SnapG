@@ -36,11 +36,6 @@ class ChooseImagesDialog(QDialog):
 
         # file list
         self.list_widget = QListWidget()
-        group_box = self._create_file_list("Image Files")
-        group_box.setMinimumWidth(200)
-        group_box.setMinimumHeight(200)
-
-        main_layout.addWidget(group_box)
 
         # --- buttons ---
         button_layout = QVBoxLayout()
@@ -62,6 +57,14 @@ class ChooseImagesDialog(QDialog):
 
         self.deselect_all_btn = QPushButton("Deselect All")
         self.deselect_all_btn.clicked.connect(self.list_widget.clearSelection)
+
+        # Create list box here because it needs buttons to be initialized
+        group_box = self._create_file_list("Image Files")
+        group_box.setMinimumWidth(200)
+        group_box.setMinimumHeight(200)
+
+        # first add list box, then add buttons
+        main_layout.addWidget(group_box)
 
         button_top_layout.addWidget(add_images_btn)
         button_top_layout.addWidget(self.remove_images_btn)

@@ -21,38 +21,10 @@ from PySide6.QtWidgets import (
     QToolButton
 )
 
+from panels.modified_widgets import PathWidget, ScrollableTabBar
+
 from models import AppState, FileMan
 from pathlib import Path
-
-class PathWidget(QWidget):
-    """Dummy widget that contains a Path object"""
-    def __init__(self, path: Path):
-        super().__init__()
-        self.path = path
-    
-    def get_path(self) -> Path:
-        """Return this `PathWidget`'s path."""
-        return self.path
-    
-class ScrollableTabBar(QTabBar):
-    def __init__(self, parent: QWidget):
-        super().__init__(parent)
-        self.setExpanding(False)
-        self.setUsesScrollButtons(True)
-
-    def wheelEvent(self, event: QWheelEvent) -> None:
-        # try finding scroll buttons
-        buttons = self.findChildren(QToolButton)
-        if len(buttons) < 2:
-            return super().wheelEvent(event)
-        left_btn, right_btn = buttons[0], buttons[1]
-        
-        # simulate clicking
-        if event.angleDelta().y() > 0:
-            left_btn.click()
-        else:
-            right_btn.click()
-        event.accept()
 
 class FileTabSelector(QTabWidget):
 

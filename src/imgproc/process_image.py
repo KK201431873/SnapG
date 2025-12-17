@@ -41,7 +41,9 @@ def process_image(
         circ_thresh: float,
         thickness_percentile: int,
         stop_flag,
-        verbose = False
+        font_path: Path,
+        verbose = False,
+        timed = False
     ) -> tuple[npt.NDArray, list[ContourData] | None]:
     h, w = input_image.shape
     linear_correction_ratio = 1.0 / resolution_divisor
@@ -51,11 +53,12 @@ def process_image(
     min_size = int(min_size * area_correction_ratio)
     max_size = int(max_size * area_correction_ratio)
     
-    very_start_time = time.perf_counter()
-    if verbose:
-        print()
-        print("thresholding")
-        start_time = very_start_time
+    if timed:
+        very_start_time = time.perf_counter()
+        if verbose:
+            print()
+            print("thresholding")
+            start_time = very_start_time
 
     # Threshold image (binary)
     kernel = create_circular_kernel(radius_val)
@@ -90,11 +93,12 @@ def process_image(
     if show_thresholded:
         return eroded, None # None means don't analyze data
     
-    if verbose:
-        now = time.perf_counter()
-        print(f"thresh took {now-start_time}s") # type: ignore
-        print("getting contours")
-        start_time = now
+    if timed:
+        if verbose:
+            now = time.perf_counter()
+            print(f"thresh took {now-start_time}s") # type: ignore
+            print("getting contours")
+            start_time = now
 
     # Find contours
     contours, _ = cv2.findContours(eroded, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
@@ -149,12 +153,12 @@ def process_image(
 
     # return all_contours_mask, []
     
-    
-    now = time.perf_counter()
-    if verbose:
-        print(f"contours took {now-start_time}s") # type: ignore
-        print(f"drawing {len(filtered_contours)} contours")
-    start_time = now
+    if timed:
+        now = time.perf_counter()
+        if verbose:
+            print(f"contours took {now-start_time}s") # type: ignore
+            print(f"drawing {len(filtered_contours)} contours")
+        start_time = now
 
     data: list[ContourData] = []
 
@@ -163,7 +167,6 @@ def process_image(
     img_w = input_image.shape[1]
     draw_scale = int(8 * img_h / 4096)
 
-    font_path = Path("assets/JetBrainsMono-Bold.ttf")
     font = ImageFont.truetype(font_path, max(15, int(15 * draw_scale)))
 
     # Text drawing helper
@@ -319,9 +322,10 @@ def process_image(
         ))
 
         # give up if taking too long (>5s)
-        now = time.perf_counter()
-        if now - very_start_time > 5:
-            give_up = True
+        if timed:
+            now = time.perf_counter()
+            if now - very_start_time > 5: # type: ignore
+                give_up = True
 
     # Give up if too many contours
     if give_up:
@@ -346,8 +350,9 @@ def process_image(
         out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
         return out_img, data
     
-    if verbose:
-        now = time.perf_counter()
-        print(f"drawing took {now-start_time}s") # type: ignore
+    if timed:
+        if verbose:
+            now = time.perf_counter()
+            print(f"drawing took {now-start_time}s") # type: ignore
     
     return out_img, data

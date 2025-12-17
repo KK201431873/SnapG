@@ -27,11 +27,41 @@ QMenuBar::item:selected, QMenuBar::item:hover {
 
 /* ProcessPanel */
 QDockWidget#ProcessPanel {
-    min-width: 100px;
-    max-width: 400px;
+    min-width: 300px;
+    max-width: 500px;
 }
 
 QWidget#ProcessPanel {
+}
+
+QPushButton#StartProcessing {
+    background-color: #2ecc71;
+    padding: 3px;
+    color: white;
+}
+QPushButton#StartProcessing:hover {
+    background-color: #3edc81;
+}
+QPushButton#StartProcessing:pressed {
+    background-color: #0eac51;
+}
+QPushButton#StartProcessing:disabled {
+    background-color: #95a5a6;
+}
+
+QPushButton#StopProcessing {
+    background-color: #e74c3c;
+    padding: 3px;
+    color: white;
+}
+QPushButton#StopProcessing:hover {
+    background-color: #f75c4c;
+}
+QPushButton#StopProcessing:pressed {
+    background-color: #d73c2c;
+}
+QPushButton#StopProcessing:disabled {
+    background-color: #95a5a6;
 }
 
 

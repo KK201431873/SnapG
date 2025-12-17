@@ -15,27 +15,7 @@ from PySide6.QtWidgets import (
     QSizePolicy
 )
 
-class NonScrollSlider(QSlider):
-    def __init__(self, orientation, parent=None):
-        super().__init__(orientation, parent)
-        self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-
-    def wheelEvent(self, event):
-        event.ignore()
-
-class NonScrollSpinBox(QSpinBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def wheelEvent(self, event):
-        event.ignore()
-
-class NonScrollDoubleSpinBox(QDoubleSpinBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def wheelEvent(self, event):
-        event.ignore()
+from panels.modified_widgets import NonScrollSlider, NonScrollSpinBox, NonScrollDoubleSpinBox
 
 class SliderParameter(QFrame):
     """Adjustable fields for segmentation settings."""

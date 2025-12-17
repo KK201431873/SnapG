@@ -21,12 +21,7 @@ from PySide6.QtWidgets import (
     QComboBox
 )
 
-class NonScrollComboBox(QComboBox):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def wheelEvent(self, event):
-        event.ignore()
+from panels.modified_widgets import NonScrollComboBox
 
 class ScaleParameter(QFrame):
     """Adjustable fields for segmentation settings."""

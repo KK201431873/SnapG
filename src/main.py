@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         self._central = central
 
         # docks
-        self.process_dock = self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea)
+        self.process_dock = self.create_fixed_dock("Batch Processing", self.process_panel, Qt.DockWidgetArea.LeftDockWidgetArea, scrollable=True)
         self.settings_dock = self.create_fixed_dock("Segmentation Settings", self.settings_panel, Qt.DockWidgetArea.RightDockWidgetArea, scrollable=True)
         self.output_dock = self.create_fixed_dock("Output", self.output_panel, Qt.DockWidgetArea.BottomDockWidgetArea)
         # load in previous dock state
@@ -264,7 +264,8 @@ class MainWindow(QMainWindow):
                 output_panel_height=self.output_dock.height()
             ),
             settings=self.settings_panel.to_settings(),
-            image_panel_state=self.image_panel.to_state()
+            image_panel_state=self.image_panel.to_state(),
+            process_panel_state=self.process_panel.to_state()
         )
 
         

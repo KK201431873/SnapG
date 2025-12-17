@@ -11,6 +11,7 @@ from imgproc.process_image import process_image
 
 from models import Settings
 
+from pathlib import Path
 import numpy as np
 import traceback
 import cv2
@@ -30,6 +31,7 @@ class ImgProcWorker(QObject):
         self._settings = None
         self._has_job = False
         self._stop_requested = False
+        self.font_path = Path("assets/JetBrainsMono-Bold.ttf")
 
     @Slot()
     def start(self):
@@ -108,7 +110,9 @@ class ImgProcWorker(QObject):
                     settings.convexity,
                     settings.circularity,
                     settings.thickness_percentile,
-                    stop_flag=lambda: self._stop_requested
+                    lambda: self._stop_requested,
+                    self.font_path,
+                    timed=True
                 )
 
             self.finished.emit(result, contour_data_list)

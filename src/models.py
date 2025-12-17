@@ -201,6 +201,32 @@ class ImagePanelState(BaseModel):
             view_center_point=(0,0),
             view_image_width=300
         )
+    
+
+class ProcessPanelState(BaseModel):
+    """Data class to store the state of `ProcessPanel`. **NOTE:** `Path`s was converted to `str`s for serialization. They must be converted back."""
+    
+    chosen_images: list[tuple[str, bool]]
+    """List map of `Path`s (converted to `str`s) to `bool`s representing whether they are flagged for batch processing."""
+
+    use_multiprocessing: bool 
+    """Whether to use multiprocessing for batch processing."""
+    
+    @staticmethod
+    def from_dict(process_panel_state_dict: dict) -> 'ProcessPanelState':
+        """Load a `ProcessPanelState` object from the given dictionary."""
+        return ProcessPanelState(
+            chosen_images=process_panel_state_dict['chosen_images'],
+            use_multiprocessing=process_panel_state_dict['use_multiprocessing']
+        )
+    
+    @staticmethod
+    def default() -> 'ProcessPanelState':
+        """Return the default `ProcessPanelState` options."""
+        return ProcessPanelState(
+            chosen_images=[],
+            use_multiprocessing=True
+        )
 
 
 class AppState(BaseModel):
@@ -216,13 +242,17 @@ class AppState(BaseModel):
     image_panel_state: ImagePanelState
     """`ImagePanel` state."""
 
+    process_panel_state: ProcessPanelState
+    """`ProcessPanel` state."""
+
     @staticmethod
     def from_dict(app_state_dict: dict) -> 'AppState':
         """Load an `AppState` object from the given dictionary."""
         return AppState(
             view=View.from_dict(app_state_dict['view']),
             settings=Settings.from_dict(app_state_dict['settings']),
-            image_panel_state=ImagePanelState.from_dict(app_state_dict['image_panel_state'])
+            image_panel_state=ImagePanelState.from_dict(app_state_dict['image_panel_state']),
+            process_panel_state=ProcessPanelState.from_dict(app_state_dict['process_panel_state'])
         )
     
     @staticmethod
@@ -231,7 +261,8 @@ class AppState(BaseModel):
         return AppState(
             view=View.default(),
             settings=Settings.default(),
-            image_panel_state=ImagePanelState.default()
+            image_panel_state=ImagePanelState.default(),
+            process_panel_state=ProcessPanelState.default()
         )
 
 
