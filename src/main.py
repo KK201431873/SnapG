@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (
     QApplication,
     QStyle,
     QVBoxLayout,
-    QMessageBox
+    QMessageBox,
+    QSizePolicy
 )
 
 from panels.image.image_panel import ImagePanel
@@ -144,6 +145,10 @@ class MainWindow(QMainWindow):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setWidget(widget)
+            widget.setSizePolicy(
+                QSizePolicy.Policy.Ignored, 
+                QSizePolicy.Policy.Maximum
+            )
             scroll.setFrameShape(QFrame.Shape.NoFrame)
             dock.setWidget(scroll)
         else:

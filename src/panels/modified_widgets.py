@@ -22,7 +22,8 @@ from PySide6.QtWidgets import (
     QComboBox,
     QTabBar,
     QMessageBox,
-    QToolButton
+    QToolButton,
+    QTextBrowser
 )
 
 from pathlib import Path
@@ -85,3 +86,9 @@ class ScrollableTabBar(QTabBar):
         else:
             right_btn.click()
         event.accept()
+
+class AutoHeightTextBrowser(QTextBrowser):
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        doc = self.document()
+        self.setFixedHeight(int(doc.size().height()) + 2)

@@ -209,6 +209,9 @@ class ProcessPanelState(BaseModel):
     chosen_images: list[tuple[str, bool]]
     """List map of `Path`s (converted to `str`s) to `bool`s representing whether they are flagged for batch processing."""
 
+    destination_path: str
+    """Destination path for image processing results."""
+
     use_multiprocessing: bool 
     """Whether to use multiprocessing for batch processing."""
     
@@ -217,6 +220,7 @@ class ProcessPanelState(BaseModel):
         """Load a `ProcessPanelState` object from the given dictionary."""
         return ProcessPanelState(
             chosen_images=process_panel_state_dict['chosen_images'],
+            destination_path=process_panel_state_dict['destination_path'],
             use_multiprocessing=process_panel_state_dict['use_multiprocessing']
         )
     
@@ -225,6 +229,7 @@ class ProcessPanelState(BaseModel):
         """Return the default `ProcessPanelState` options."""
         return ProcessPanelState(
             chosen_images=[],
+            destination_path="",
             use_multiprocessing=True
         )
 

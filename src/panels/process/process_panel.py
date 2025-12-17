@@ -3,7 +3,8 @@ from PySide6.QtCore import (
     Qt
 )
 from PySide6.QtGui import (
-    QIcon
+    QIcon,
+    QTextOption
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -15,11 +16,13 @@ from PySide6.QtWidgets import (
     QFrame,
     QLabel,
     QCheckBox,
-    QHBoxLayout
+    QHBoxLayout,
+    QFileDialog,
+    QSizePolicy
 )
 
 from panels.process.choose_images_dialog import ChooseImagesDialog
-from panels.modified_widgets import NonScrollComboBox
+from panels.modified_widgets import NonScrollComboBox, AutoHeightTextBrowser
 
 from models import AppState, ProcessPanelState
 
@@ -35,7 +38,16 @@ class ProcessPanel(QWidget):
         self.chosen_images: list[tuple[Path, bool]] = [
             (Path(path), checked) for path, checked in app_state.process_panel_state.chosen_images
         ]
-
+        self.destination_path: Path | None = None
+        destination_path_str = app_state.process_panel_state.destination_path
+        if destination_path_str != "":
+            try:
+                dest_path = Path(destination_path_str)
+                if dest_path.is_dir():
+                    self.destination_path = dest_path
+            except Exception as e:
+                self.destination_path = None
+        
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
@@ -49,7 +61,7 @@ class ProcessPanel(QWidget):
         # chosen images label
         self.chosen_images_label = QLabel("No Images Selected")
         data_prep_group_layout.addWidget(self.chosen_images_label)
-        self._update_label()
+        self._update_images_label()
 
         # choose images button
         self.choose_images_btn = QPushButton("Choose Images")
@@ -62,6 +74,23 @@ class ProcessPanel(QWidget):
         proc_options_layout = QVBoxLayout(proc_options_group)
         proc_options_layout.setContentsMargins(11, 5, 11, 11)
         layout.addWidget(proc_options_group)
+
+        # chosen destination path label
+        self.choose_dest_label = AutoHeightTextBrowser()
+        self.choose_dest_label.setReadOnly(True)
+        self.choose_dest_label.setFrameShape(QFrame.Shape.NoFrame)
+        self.choose_dest_label.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.choose_dest_label.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.choose_dest_label.setWordWrapMode(QTextOption.WrapMode.WrapAnywhere)
+        self.choose_dest_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.choose_dest_label.setText("No Path Selected")
+        proc_options_layout.addWidget(self.choose_dest_label)
+        self._update_path_label()
+
+        # choose dest path button
+        self.choose_dest_btn = QPushButton("Choose Destination Path")
+        self.choose_dest_btn.clicked.connect(self._choose_dest_path)
+        proc_options_layout.addWidget(self.choose_dest_btn)
 
         # multiprocessing checkbox
         use_multiproc_layout = QHBoxLayout()
@@ -147,7 +176,7 @@ class ProcessPanel(QWidget):
         self.text_browser.setMinimumHeight(200)
         output_group_layout.addWidget(self.text_browser)
     
-    def _update_label(self):
+    def _update_images_label(self):
         """Updates the images chosen label with the number of selected images."""
         if len(self.chosen_images) == 0:
             self.chosen_images_label.setText("No Images Selected")
@@ -156,7 +185,33 @@ class ProcessPanel(QWidget):
         total_selected = sum([1 for _, checked in self.chosen_images if checked])
         total_unselected = len(self.chosen_images) - total_selected
         self.chosen_images_label.setText(f"{total_selected} images selected ({total_unselected} unselected)")
+    
+    def _update_path_label(self):
+        """Updates the destination path label."""
+        if self.destination_path is None:
+            self.choose_dest_label.setText("No Path Selected")
+            self.choose_dest_label.setToolTip("No Path Selected")
+            return
+        # cast Path to str
+        text = f"<b>Destination</b>: {str(self.destination_path)}"
+        self.choose_dest_label.setHtml(text)
+        self.choose_dest_label.setToolTip(text)
+        self._update_text_browser_height()
+    
+    def _update_text_browser_height(self):
+        doc = self.choose_dest_label.document()
 
+        height = int(doc.size().height())
+        margins = self.choose_dest_label.contentsMargins()
+
+        total_height = (
+            height
+            + margins.top()
+            + margins.bottom()
+            + 2  # small safety padding
+        )
+
+        self.choose_dest_label.setFixedHeight(total_height)
     
     def _choose_files(self):
         """Show dialog for selecting image files."""
@@ -169,11 +224,30 @@ class ProcessPanel(QWidget):
 
         # update internal state if user pressed OK
         self.chosen_images = dialog.get_chosen_images()
-        self._update_label()
+        self._update_images_label()
+    
+    def _choose_dest_path(self):
+        """Show dialog for selecting destination path."""
+        directory = QFileDialog.getExistingDirectory(
+            parent=self,
+            caption="Select Destination Path",
+            options=QFileDialog.Option.ShowDirsOnly
+        )
+        if not directory:
+            return
+        
+        dest_path = Path(directory)
+        if not dest_path.is_dir():
+            return
+        
+        # update internal state
+        self.destination_path = dest_path
+        self._update_path_label()
     
     def to_state(self) -> ProcessPanelState:
         """Return all current fields as an `ProcessPanelState` object."""
         return ProcessPanelState(
             chosen_images=[(str(path), checked) for path, checked in self.chosen_images],
+            destination_path="" if self.destination_path is None else str(self.destination_path),
             use_multiprocessing=self.use_multiproc_checkbox.isChecked()
         )
