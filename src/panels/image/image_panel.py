@@ -9,7 +9,8 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QImage,
-    QCloseEvent
+    QCloseEvent,
+    QKeyEvent
 )
 from PySide6.QtWidgets import (
     QWidget,
@@ -55,6 +56,7 @@ class ImagePanel(QWidget):
 
     def __init__(self, app_state: AppState, settings_panel: SettingsPanel):
         super().__init__()
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.settings_panel = settings_panel
         
         # init files lists and state
@@ -228,7 +230,6 @@ class ImagePanel(QWidget):
         """
         if file_path == self.current_file:
             self.emit_files()
-            self._log_file_name()
             return True
 
         valid = self._validate_file(file_path, remove=True)
@@ -249,11 +250,11 @@ class ImagePanel(QWidget):
         
         # update state
         self.current_file = file_path
+        self._log_file_name()
         self.update_image()
         
         # emit signal
         self.emit_files()
-        self._log_file_name()
         return True
 
     def _validate_file(self, file_path: Path, remove: bool = False) -> bool:
@@ -290,7 +291,7 @@ class ImagePanel(QWidget):
     def receive_settings(self, settings: Settings):
         """Receive new settings and update image."""
         self.settings = settings
-        self.update_image()
+        self.update_image(read_seg_file=False) # changing settings should only affect TUNE mode, not REVIEW
     
     def _get_segmentation_data(self, file_path: Path) -> SegmentationData | None:
         """
@@ -311,7 +312,7 @@ class ImagePanel(QWidget):
             logger.println(traceback.format_exc(), color="red")
             return None
     
-    def update_image(self):
+    def update_image(self, read_seg_file: bool = True):
         """Updates this panel's `ImageView` using the current file."""
         if self.current_file is None:
             return
@@ -328,10 +329,16 @@ class ImagePanel(QWidget):
         
         # review: get image from seg file
         elif self.mode == Mode.REVIEW:
-            self.current_seg_data = self._get_segmentation_data(self.current_file)
+            if read_seg_file:
+                self.current_seg_data = self._get_segmentation_data(self.current_file)
             if self.current_seg_data is not None:
                 self.current_original_image = self.current_seg_data.image
                 self.display_image = self._annotate_review_image(self.current_seg_data)
+                self._log_file_name()
+                self._log_contour_data(
+                    self.current_seg_data.contour_data, 
+                    selected_states=self.current_seg_data.selected_states
+                )
             else:
                 self.display_image = self.current_original_image
 
@@ -390,43 +397,88 @@ class ImagePanel(QWidget):
 
         # log data
         self._log_file_name()
-        if contour_data_list is None:
-            return
+        if contour_data_list is not None:
+            self._log_contour_data(contour_data_list)
         
-        logger.println(f"{len(contour_data_list)} axons found.\n")
+    def _log_contour_data(self, contour_data_list: list[ContourData], selected_states: list[bool] | None = None):
+        """Helper function for logging contour data to the text display."""
+        # sort axons
+        if selected_states is None:
+            selected_cnt: list[ContourData] = contour_data_list
+            deselected_cnt: list[ContourData] = []
+        else:
+            selected_cnt: list[ContourData] = []
+            deselected_cnt: list[ContourData] = []
+            for i, c in enumerate(contour_data_list):
+                if selected_states[i]:
+                    selected_cnt.append(c)
+                else:
+                    deselected_cnt.append(c)
+                    
+        # log data
+        logger.print(f"{len(selected_cnt)} axons {"found" if selected_states is None else "selected"}.")
+        if len(deselected_cnt) > 0:
+            logger.print(f" ({len(deselected_cnt)} deselected)")
+        logger.print("\n\n")
         if len(contour_data_list) == 0:
             return
+        
+        data_suffix = "" if selected_states is None else "(selected axons)"
 
-        mean_g_ratio = round(np.mean([d.g_ratio for d in contour_data_list]), 3)
         logger.print("Mean G-ratio", underline=True)
-        logger.print(": ")
-        logger.println(f"{mean_g_ratio}\n", color="gray")
+        logger.println(":")
+        if selected_states is not None and len(selected_cnt) > 0 and len(deselected_cnt) > 0:
+            # log selected
+            mean_g_ratio = round(np.mean([c.g_ratio for c in selected_cnt]), 3)
+            logger.print("|   "); logger.println(f"{mean_g_ratio} {data_suffix}", color="gray")
+        # log total
+        mean_g_ratio = round(np.mean([c.g_ratio for c in contour_data_list]), 3)
+        logger.print("|   "); logger.println(f"{mean_g_ratio} (all axons)\n", color="gray")
 
         units = "µm" if self.settings is None else self.settings.scale_units
-        mean_inner_dia = np.mean([d.inner_diameter for d in contour_data_list])
-        mean_outer_dia = np.mean([d.outer_diameter for d in contour_data_list])
         logger.println("Mean diameters", underline=True)
+        if selected_states is not None and len(selected_cnt) > 0 and len(deselected_cnt) > 0:
+            # log selected
+            mean_inner_dia = np.mean([c.inner_diameter for c in selected_cnt])
+            mean_outer_dia = np.mean([c.outer_diameter for c in selected_cnt])
+            if units == "µm":
+                mean_inner_dia /= 1000.0
+                mean_outer_dia /= 1000.0
+            logger.print(f"|   Inner: ")
+            logger.println(f"{round(mean_inner_dia, 3)} {units} {data_suffix}", color="gray")
+            logger.print(f"|   Outer: ")
+            logger.println(f"{round(mean_outer_dia, 3)} {units} {data_suffix}", color="gray")
+        # log total
+        mean_inner_dia = np.mean([c.inner_diameter for c in contour_data_list])
+        mean_outer_dia = np.mean([c.outer_diameter for c in contour_data_list])
         if units == "µm":
             mean_inner_dia /= 1000.0
             mean_outer_dia /= 1000.0
         logger.print(f"|   Inner: ")
-        logger.println(f"{round(mean_inner_dia, 3)} {units}", color="gray")
+        logger.println(f"{round(mean_inner_dia, 3)} {units} (all axons)", color="gray")
         logger.print(f"|   Outer: ")
-        logger.println(f"{round(mean_outer_dia, 3)} {units}\n", color="gray")
+        logger.println(f"{round(mean_outer_dia, 3)} {units} (all axons)\n", color="gray")
 
-        logger.println("Detections", underline=True)
-        for contour_data in contour_data_list:
+        if len(selected_cnt) == 0:
+            return
+
+        logger.println(f"Detections {data_suffix}", underline=True)
+        for c in selected_cnt:
+            inner = c.inner_diameter
+            outer = c.outer_diameter
+            thick = c.thickness
+
             if units == "µm":
-                contour_data.inner_diameter /= 1000.0
-                contour_data.outer_diameter /= 1000.0
-                contour_data.thickness /= 1000.0
+                inner /= 1000.0
+                outer /= 1000.0
+                thick /= 1000.0
 
-            logger.println(f"|   Axon {contour_data.ID}")
-            logger.print("|       g-ratio: "); logger.println(f"{round(contour_data.g_ratio, 3)}", color="gray")
-            logger.print("|       circularity: "); logger.println(f"{round(contour_data.circularity, 3)}", color="gray")
-            logger.print("|       inner diameter: "); logger.println(f"{round(contour_data.inner_diameter, 3)} {units}", color="gray")
-            logger.print("|       outer diameter: "); logger.println(f"{round(contour_data.outer_diameter, 3)} {units}", color="gray")
-            logger.print("|       myelin thickness: "); logger.println(f"{round(contour_data.thickness, 3)} {units}", color="gray")
+            logger.println(f"|   Axon {c.ID}")
+            logger.print("|       g-ratio: "); logger.println(f"{round(c.g_ratio, 3)}", color="gray")
+            logger.print("|       circularity: "); logger.println(f"{round(c.circularity, 3)}", color="gray")
+            logger.print("|       inner diameter: "); logger.println(f"{round(c.inner_diameter, 3)} {units}", color="gray")
+            logger.print("|       outer diameter: "); logger.println(f"{round(c.outer_diameter, 3)} {units}", color="gray")
+            logger.print("|       myelin thickness: "); logger.println(f"{round(c.thickness, 3)} {units}", color="gray")
             logger.println("|")
 
     def _on_processing_error(self, message: str):
@@ -563,6 +615,50 @@ class ImagePanel(QWidget):
             
         display_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
         return display_img
+    
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        """Handle enabling contour exclusion modes in REVIEW mode."""
+        if event.isAutoRepeat():
+            return
+        
+        if self.mode != Mode.REVIEW:
+            super().keyPressEvent(event)
+            return
+
+        changed = False
+        if event.key() == Qt.Key.Key_Shift:
+            if not self.exclude_deselected_contours:
+                self.exclude_deselected_contours = True
+                changed = True
+
+        elif event.key() == Qt.Key.Key_Space:
+            if not self.exclude_all_contours:
+                self.exclude_all_contours = True
+                changed = True
+
+        if changed:
+            self.update_image(read_seg_file=False)
+        event.accept()
+    
+    def keyReleaseEvent(self, event: QKeyEvent) -> None:
+        """Handle disabling contour exclusion modes in REVIEW mode."""
+        if event.isAutoRepeat():
+            return
+        
+        changed = False
+        if event.key() == Qt.Key.Key_Shift:
+            if self.exclude_deselected_contours:
+                self.exclude_deselected_contours = False
+                changed = True
+
+        elif event.key() == Qt.Key.Key_Space:
+            if self.exclude_all_contours:
+                self.exclude_all_contours = False
+                changed = True
+
+        if changed and self.mode == Mode.REVIEW:
+            self.update_image(read_seg_file=False)
+        event.accept()
     
     def to_state(self) -> ImagePanelState:
         """Return all current fields as an `ImagePanelState` object."""

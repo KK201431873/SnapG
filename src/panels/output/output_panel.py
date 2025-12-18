@@ -56,6 +56,8 @@ class OutputPanel(QWidget):
 
         cursor.setCharFormat(fmt)
         cursor.insertText(s)
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+        self.text_browser.setTextCursor(cursor)
 
     @Slot()
     def clear(self):

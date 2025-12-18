@@ -12,6 +12,7 @@ import numpy as np
 
 class View(BaseModel):
     """Data class to store view options."""
+    model_config = ConfigDict(frozen=True)
 
     theme: str
     """Application color theme (only `light` supported so far)."""
@@ -67,6 +68,7 @@ class View(BaseModel):
 
 class Settings(BaseModel):
     """Data class to store segmentation settings."""
+    model_config = ConfigDict(frozen=True)
 
     scale: float
     """Distance per pixel."""
@@ -158,6 +160,7 @@ class Settings(BaseModel):
 
 class ImagePanelState(BaseModel):
     """Data class to store the state of `ImagePanel`. **NOTE:** Non-primitive objects were converted for serialization. They must be converted back."""
+    model_config = ConfigDict(frozen=True)
 
     image_files: list[str]
     """List of loaded image files. **NOTE:** `Path` objects were converted to `str`s for serialization. They must be converted back."""
@@ -206,6 +209,7 @@ class ImagePanelState(BaseModel):
 
 class ProcessPanelState(BaseModel):
     """Data class to store the state of `ProcessPanel`. **NOTE:** `Path`s was converted to `str`s for serialization. They must be converted back."""
+    model_config = ConfigDict(frozen=True)
     
     chosen_images: list[tuple[str, bool]]
     """List map of `Path`s (converted to `str`s) to `bool`s representing whether they are flagged for batch processing."""
@@ -242,7 +246,7 @@ class ProcessPanelState(BaseModel):
 
 class AppState(BaseModel):
     """Wrapper data class containing all app options."""
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     view: View
     """View options."""
@@ -280,7 +284,7 @@ class AppState(BaseModel):
 # == imgproc stuff ==
 class ContourData(BaseModel):
     """Cotainer class for the data representing one axon contour in a segmented image."""
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, frozen=True)
 
     ID: int
     """Axon ID."""

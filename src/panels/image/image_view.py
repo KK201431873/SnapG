@@ -204,7 +204,7 @@ class ImageView(QWidget):
         if event.button() == Qt.MouseButton.RightButton:
             self.drag_start_position = event.pos()
             self.drag_start_image_position = self.center_point
-            self.drag_active = False
+            self.drag_active = True
         elif event.button() == Qt.MouseButton.LeftButton:
             is_in_image, image_point = self._in_image(event.pos())
             # Propagate mouse event up
@@ -219,19 +219,16 @@ class ImageView(QWidget):
 
         # handle pan move
         if event.buttons() & Qt.MouseButton.RightButton and self.drag_start_position is not None:
+            self.drag_active = True
             displacement = event.pos() - self.drag_start_position
-            distance = displacement.manhattanLength()
+            cx, cy = self.drag_start_image_position
 
-            # check distance against drag start threshold
-            if (distance > QApplication.startDragDistance() or self.drag_active):
-                self.drag_active = True
-                cx, cy = self.drag_start_image_position
-                self.center_point = (
-                    cx + displacement.x(),
-                    cy + displacement.y()
-                )
-                self._clamp_center_position()
-                self.update()
+            self.center_point = (
+                cx + displacement.x(),
+                cy + displacement.y()
+            )
+            self._clamp_center_position()
+            self.update()
         else:
             super().mouseMoveEvent(event)
     
