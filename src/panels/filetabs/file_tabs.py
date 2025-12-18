@@ -127,9 +127,11 @@ class FileTabSelector(QTabWidget):
         self.setTabToolTip(index, tab_path.name)
         extension = tab_path.suffix.lower()
         if extension == ".seg":
-            self.setTabIcon(index, QIcon("assets/seg_file_icon.ico"))
+            seg_file_icon_path = FileMan.resource_path("assets/seg_file_icon.ico")
+            self.setTabIcon(index, QIcon(str(seg_file_icon_path)))
         if FileMan.is_image(extension):
-            self.setTabIcon(index, QIcon("assets/image_icon.ico"))
+            image_icon_path = FileMan.resource_path("assets/image_icon.ico")
+            self.setTabIcon(index, QIcon(str(image_icon_path)))
         return index
     
     def _get_tab_paths(self) -> list[Path | None]:

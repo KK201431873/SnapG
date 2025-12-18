@@ -663,7 +663,7 @@ class ImagePanel(QWidget):
                 QMessageBox.critical(
                     self,
                     "Save Error",
-                    f"Failed to save segmentation data:\n{e}"
+                    f"Segmentation file not found:\n{e}"
                 )
                 event.ignore()
                 return

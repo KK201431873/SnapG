@@ -2,13 +2,12 @@ from PySide6.QtWidgets import (
     QApplication
 )
 
-
-from models import AppState
+from models import AppState, FileMan
 
 from pathlib import Path
 import json
 
-app_state_path = Path(__file__).parent / "__appdata__" / "app_state.snpg"
+app_state_path = FileMan.resource_path("__appdata__/app_state.snpg")
 
 def load_state(path: Path = app_state_path) -> tuple[AppState, bool]:
     """

@@ -31,7 +31,7 @@ class ImgProcWorker(QObject):
         self._settings = None
         self._has_job = False
         self._stop_requested = False
-        self.font_path = Path("assets/JetBrainsMono-Bold.ttf")
+        self.font_path = AppState.annotation_font_path()
 
     @Slot()
     def start(self):

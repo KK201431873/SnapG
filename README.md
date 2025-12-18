@@ -71,4 +71,13 @@ Click these buttons in order:
 
 TODO
 
+Rebuild command (Run from `src/`):
+```
+(Windows)
+pyinstaller main.py --noconsole --add-data "assets;assets" --add-data "styles;styles" --add-data "__appdata__;__appdata__"
+
+(Linux) 
+pyinstaller main.py --noconsole --add-data "assets:assets" --add-data "styles:styles" --add-data "__appdata__:__appdata__"
+```
+
 ---

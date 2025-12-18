@@ -10,6 +10,7 @@ import numpy.typing as npt
 import numpy as np
 import traceback
 import pickle
+import sys
 
 class View(BaseModel):
     """Data class to store view options."""
@@ -284,7 +285,7 @@ class AppState(BaseModel):
     @staticmethod
     def annotation_font_path() -> Path:
         """Return the `Path` to the default image annotation font."""
-        return Path("assets/JetBrainsMono-Bold.ttf")
+        return FileMan.resource_path("assets/JetBrainsMono-Bold.ttf")
 
 
 # == imgproc stuff ==
@@ -359,6 +360,7 @@ class SegmentationData(BaseModel):
             return None
 
 
+# == util ==
 class FileMan():
     """Utility class for file management."""
 
@@ -382,6 +384,15 @@ class FileMan():
             bool: Whether the given `Path` represents an image.
         """
         return FileMan.is_image(path.suffix.lower())
+
+    @staticmethod
+    def resource_path(relative_path: str) -> Path:
+        """
+        Get absolute path to resource, works for dev and PyInstaller.
+        """
+        if hasattr(sys, "_MEIPASS"):
+            return Path(sys._MEIPASS) / relative_path # type: ignore
+        return Path(__file__).resolve().parent / relative_path
 
 
 class Logger(QObject):

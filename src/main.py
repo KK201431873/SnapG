@@ -31,7 +31,7 @@ from panels.menu.menu_bar import MenuBar
 from panels.filetabs.file_tabs import FileTabSelector
 from panels.generate.generate_data_dialog import GenerateDataDialog
 
-from models import AppState, View, Settings
+from models import AppState, View, Settings, FileMan
 
 from save_load import load_state, write_state
 from styles.style_manager import get_style_sheet
@@ -321,7 +321,8 @@ def main():
 
     # Window aesthetics
     window.setWindowTitle("SnapG")
-    window.setWindowIcon(QIcon("assets/favicon.ico"))
+    window_icon_path = FileMan.resource_path("assets/favicon.ico")
+    window.setWindowIcon(QIcon(str(window_icon_path)))
     if sys.platform == "win32":
         # Windows 11 taskbar icon fix
         import ctypes
