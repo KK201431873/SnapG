@@ -84,7 +84,6 @@ class ImagePanel(QWidget):
         # these states are for REVIEW mode
         self.exclude_deselected_contours: bool = False
         self.exclude_all_contours: bool = False
-        self.font_path = Path("assets/JetBrainsMono-Bold.ttf")
         
         # image processing thread
         self.processing_thread = QThread(self)
@@ -576,7 +575,7 @@ class ImagePanel(QWidget):
         draw_scale = int(8 * max(img_h, img_w) / 4096)
         line_spacing = 14*draw_scale
         out_pil = Image.fromarray(cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB))
-        font = ImageFont.truetype(self.font_path, int(15*draw_scale))
+        font = ImageFont.truetype(AppState.annotation_font_path(), int(15*draw_scale))
         draw = ImageDraw.Draw(out_pil)
         for i, c in enumerate(contour_data):
             if (self.exclude_deselected_contours and not selected_states[i]) or self.exclude_all_contours:

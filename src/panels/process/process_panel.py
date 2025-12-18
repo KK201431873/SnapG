@@ -358,6 +358,10 @@ class ProcessPanel(QWidget):
                 img for img in self.chosen_images if img[0] not in invalid_paths
             ]
             self._update_images_label()
+        # check if no paths left
+        if len(filtered_image_paths) == 0:
+            QMessageBox.warning(self, "Start Processing", "No images left to process.")
+            return
 
         # get number of workers
         workers = 1

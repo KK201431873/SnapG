@@ -9,7 +9,7 @@ from PySide6.QtCore import (
 
 from imgproc.process_image import process_image
 
-from models import Settings
+from models import AppState, Settings
 
 from pathlib import Path
 import numpy as np
@@ -111,7 +111,7 @@ class ImgProcWorker(QObject):
                     settings.circularity,
                     settings.thickness_percentile,
                     lambda: self._stop_requested,
-                    self.font_path,
+                    AppState.annotation_font_path(),
                     timed=True
                 )
 

@@ -35,8 +35,8 @@ def process_image(
         radius_val: int, 
         dilate: int, 
         erode: int, 
-        min_size: int, 
-        max_size: int, 
+        min_size: float, 
+        max_size: float, 
         convex_thresh: float, 
         circ_thresh: float,
         thickness_percentile: int,
@@ -45,13 +45,12 @@ def process_image(
         verbose = False,
         timed = False
     ) -> tuple[npt.NDArray, list[ContourData] | None]:
-    h, w = input_image.shape
+    h = input_image.shape[0]
+    w = input_image.shape[1]
+    total_image_area: float = float(h * w)
     linear_correction_ratio = 1.0 / resolution_divisor
-    area_correction_ratio = linear_correction_ratio ** 2
     dilate = round(dilate * linear_correction_ratio)
     erode = round(erode * linear_correction_ratio)
-    min_size = int(min_size * area_correction_ratio)
-    max_size = int(max_size * area_correction_ratio)
     
     if timed:
         very_start_time = time.perf_counter()
@@ -71,7 +70,8 @@ def process_image(
     inverted = cv2.bitwise_not(thresh)
     contours, _ = cv2.findContours(inverted, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     for c in contours:
-        if cv2.contourArea(c) < 1000 * area_correction_ratio:
+        area_proportion = cv2.contourArea(c) / total_image_area
+        if area_proportion < 0.0006:
             cv2.drawContours(thresh, [c], -1, 255, cv2.FILLED)
     
     # # Remove small long white features
@@ -127,8 +127,9 @@ def process_image(
             continue
         
         # Check size
-        c_area = cv2.contourArea(c)
-        if not (min_size <= c_area <= max_size):
+        c_bounding_area = bw*bh
+        c_bounding_area_proportion = c_bounding_area / total_image_area
+        if not (min_size <= c_bounding_area_proportion <= max_size):
             continue
         
         # Check convexness

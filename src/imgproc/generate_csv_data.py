@@ -6,7 +6,13 @@ import numpy.typing as npt
 import numpy as np
 import cv2
 
-def get_csv_lines(self, seg_data_list: list[SegmentationData], font_path: Path, formatted_datetime: str):
+def get_csv_lines(seg_data_list: list[SegmentationData], 
+                  font_path: Path, 
+                  formatted_datetime: str
+    ) -> tuple[
+        list[tuple[str, npt.NDArray]],
+        list[str]
+    ]:
     """Generate a CSV representation of the data from `SegmentationData` objects."""
     out_imgs: list[tuple[str, npt.NDArray]] = []
     data_lists: list[tuple[str, list[ContourData], str]] = []
@@ -63,7 +69,7 @@ def get_csv_lines(self, seg_data_list: list[SegmentationData], font_path: Path, 
         out_imgs.append((f"{name}_labeled_{formatted_datetime}.{extension}", display_img))
         data_lists.append((img_filename, reindexed_contour_data, seg_data.preferred_units))
         
-    csv_lines = []
+    csv_lines: list[str] = []
 
     csv_lines.append(f"Image,Axons found\n")
     for filename, data, _ in data_lists:

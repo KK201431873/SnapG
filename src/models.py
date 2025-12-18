@@ -101,11 +101,11 @@ class Settings(BaseModel):
     erode: int
     """Erode kernel radius."""
 
-    min_size: int
-    """Minimum contour size (px)."""
+    min_size: float
+    """Minimum contour bounding box size as a proportion of the entire image (between `0.0` and `1.0`)."""
 
-    max_size: int
-    """Maximum contour size (px)."""
+    max_size: float
+    """Maximum contour bounding box size as a proportion of the entire image (between `0.0` and `1.0`)."""
 
     convexity: float
     """Convexity percentage threshold (between `0.0` and `1.0`)."""
@@ -151,8 +151,8 @@ class Settings(BaseModel):
             radius=0,
             dilate=0,
             erode=0,
-            min_size=100,
-            max_size=1_000_000,
+            min_size=0.0,
+            max_size=1.0,
             convexity=0.0,
             circularity=0.0,
             thickness_percentile=30
@@ -280,6 +280,11 @@ class AppState(BaseModel):
             image_panel_state=ImagePanelState.default(),
             process_panel_state=ProcessPanelState.default()
         )
+    
+    @staticmethod
+    def annotation_font_path() -> Path:
+        """Return the `Path` to the default image annotation font."""
+        return Path("assets/JetBrainsMono-Bold.ttf")
 
 
 # == imgproc stuff ==

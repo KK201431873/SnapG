@@ -2,9 +2,12 @@ from pathlib import Path
 
 from PySide6.QtCore import (
     Qt,
-    QSize
+    QSize,
+    QThread
 )
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import (
+    QCloseEvent
+)
 from PySide6.QtWidgets import (
     QDialog,
     QVBoxLayout,
@@ -20,9 +23,14 @@ from PySide6.QtWidgets import (
     QMessageBox
 )
 
-from models import SegmentationData, ContourData, logger
+from panels.generate.busy_dialog import BusyDialog
+from panels.generate.generate_data_worker import GenerateDataWorker
+
+from models import AppState, SegmentationData, ContourData, logger
 
 from datetime import datetime
+import numpy.typing as npt
+import cv2
 
 class GenerateDataDialog(QDialog):
     def __init__(
@@ -256,7 +264,7 @@ class GenerateDataDialog(QDialog):
             self._update_selection_buttons()
         
     def _generate_data(self):
-        """Generate data from segmentation files."""
+        """Validate files and request worker to generate data from segmentation files."""
         # check if images selected
         raw_image_paths: list[Path] = [p for p, checked in self.chosen_images if checked]
         if len(raw_image_paths) == 0:
@@ -316,42 +324,77 @@ class GenerateDataDialog(QDialog):
                 img for img in self.chosen_images if img[0] not in invalid_paths
             ]
             self._update_selection_buttons()
-            
-        # create destination
-        formatted_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_dir = dest_path / f"SnapG_seg_{formatted_datetime}"
-        save_dir.mkdir(parents=True, exist_ok=True)
+        # check if no data left
+        if len(filtered_segmentations) == 0:
+            QMessageBox.warning(self, "Generate Data", "No segmentation data left to process.")
+            return
 
         # generate
-        
+        formatted_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # # update gui
-        # self.start_btn.setDisabled(True)
-        # self.stop_btn.setDisabled(False)
+        # busy dialog
+        self.busy_dialog = BusyDialog("Generating segmentation data…", self)
+        self.busy_dialog.show()
 
-        # self.text_browser.clear()
-        # plural_imgs = "" if len(filtered_image_paths) == 1 else "s"
-        # plural_wrkr = "" if workers == 1 else "s"
-        # self.text_browser.append(f"<b>Processing {len(filtered_image_paths)} image{plural_imgs} with {workers} worker{plural_wrkr}…</b>")
-        # self.text_browser.append(f"<b>(Started on {datetime.today().strftime('%Y-%m-%d %H:%M:%S')})</b>")
-        
-        # # progress bar & eta
-        # self.total_images = len(filtered_image_paths)
-        # self.completed_images = 0
-        # self.progress_bar.setMaximum(self.total_images)
-        # self.progress_bar.setValue(0)
-        # self.progress_bar.setVisible(True)
+        # threading
+        self.worker_thread = QThread(self)
+        self.worker = GenerateDataWorker(
+            filtered_segmentations,
+            AppState.annotation_font_path(),
+            formatted_datetime
+        )
 
-        # self.eta_label.setVisible(True)
-        # self.eta_label.setText("Estimating time remaining…")
+        self.worker.moveToThread(self.worker_thread)
 
-        # # update state
-        # self.start_processing_time = time.perf_counter()
-        # self.currently_processing = True
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.finished.connect(
+            lambda imgs, csv: self._on_generate_finished(
+                imgs, csv, dest_path, formatted_datetime
+            )
+        )
+        self.worker.error.connect(self._on_generate_error)
+
+        # cleanup
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
+
+        self.worker_thread.start()
+    
+    def _on_generate_finished(
+        self,
+        out_imgs: list[tuple[str, npt.NDArray]],
+        csv_lines: list[str],
+        dest_path: Path,
+        formatted_datetime: str
+    ):
+        """Receive data from worker and write to destination path."""
+        self.busy_dialog.hide()
+
+        save_dir = dest_path / f"SnapG_segmentation_data_{formatted_datetime}"
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        csv_filepath = save_dir / f"SnapG_segmentation_data_{formatted_datetime}.csv"
+        with open(csv_filepath, "w") as f:
+            f.writelines(csv_lines)
+
+        image_dir = save_dir / "images"
+        image_dir.mkdir(parents=True, exist_ok=True)
+        for filename, image in out_imgs:
+            cv2.imwrite(str(image_dir / filename), image)
+
+        QMessageBox.information(
+            self,
+            "Generate Data",
+            "Segmentation data generated successfully."
+        )
+    
+    def _on_generate_error(self, message: str):
+        """Handle worker errors."""
+        self.busy_dialog.hide()
+        QMessageBox.critical(self, "Generate Data Error", message)
 
     # -- closing --
     def closeEvent(self, event: QCloseEvent) -> None:
         event.ignore()
         self.hide()
-
-
