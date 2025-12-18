@@ -59,10 +59,10 @@ class SliderParameter(QFrame):
         # spinbox
         if is_float:
             self.spin = NonScrollDoubleSpinBox()
+            self.spin.setDecimals(4)
             self.spin.setRange(*bounds)
             self.spin.setSingleStep(valstep)
             self.spin.setValue(value)
-            self.spin.setDecimals(3)
         else:
             self.spin = NonScrollSpinBox()
             self.spin.setRange(int(bounds[0]), int(bounds[1]))

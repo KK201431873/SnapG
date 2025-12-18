@@ -46,7 +46,7 @@ class ScaleParameter(QFrame):
         validator.setNotation(QDoubleValidator.Notation.StandardNotation)
         validator.setLocale(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
         self.field = QLineEdit()
-        self.field.setMaximumWidth(100)
+        # self.field.setMaximumWidth(125)
         self.field.setValidator(validator)
         self.field.setText(str(value))
         hlayout.addWidget(self.field)
@@ -54,9 +54,9 @@ class ScaleParameter(QFrame):
         # units dropdown
         self.units = NonScrollComboBox()
         self.units.setFixedWidth(50)
-        self.units.addItem("µm")
+        self.units.addItem("um")
         self.units.addItem("nm")
-        if scale_units in ["µm", "nm"]:
+        if scale_units in ["um", "nm"]:
             self.units.setCurrentText(scale_units)
 
         hlayout.addWidget(self.units)

@@ -86,7 +86,7 @@ def get_csv_lines(seg_data_list: list[SegmentationData],
             inner_dia = c.inner_diameter # nm
             outer_dia = c.outer_diameter # nm
             thickness = c.thickness # nm
-            if preferred_units == "µm":
+            if preferred_units == "um":
                 inner_dia /= 1000.0
                 outer_dia /= 1000.0
                 thickness /= 1000.0

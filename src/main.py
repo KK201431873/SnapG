@@ -182,6 +182,7 @@ class MainWindow(QMainWindow):
             caption="Open Image(s)",
             filter="Images (*.jpg *.jpeg *.png *.gif *.bmp *.tiff *.tif)"
         )
+        file_names.sort() # UX improvement
         file_paths = [Path(s) for s in file_names]
         self.image_panel.add_files(file_paths)
     
@@ -192,6 +193,7 @@ class MainWindow(QMainWindow):
             caption="Open Segmentation File(s)",
             filter="SEG Files (*.seg)"
         )
+        file_names.sort() # UX improvement
         file_paths = [Path(s) for s in file_names]
         self.image_panel.add_files(file_paths)
 

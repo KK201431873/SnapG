@@ -398,7 +398,7 @@ class ImagePanel(QWidget):
                     selected_cnt.append(c)
                 else:
                     deselected_cnt.append(c)
-                    
+
         # log data
         logger.print(f"{len(selected_cnt)} axons {"found" if selected_states is None else "selected"}.")
         if len(deselected_cnt) > 0:
@@ -424,7 +424,7 @@ class ImagePanel(QWidget):
             # log selected
             mean_inner_dia = np.mean([c.inner_diameter for c in selected_cnt])
             mean_outer_dia = np.mean([c.outer_diameter for c in selected_cnt])
-            if units == "µm":
+            if units == "um":
                 mean_inner_dia /= 1000.0
                 mean_outer_dia /= 1000.0
             logger.print(f"|   Inner: ")
@@ -434,7 +434,7 @@ class ImagePanel(QWidget):
         # log total
         mean_inner_dia = np.mean([c.inner_diameter for c in contour_data_list])
         mean_outer_dia = np.mean([c.outer_diameter for c in contour_data_list])
-        if units == "µm":
+        if units == "um":
             mean_inner_dia /= 1000.0
             mean_outer_dia /= 1000.0
         logger.print(f"|   Inner: ")
@@ -451,7 +451,7 @@ class ImagePanel(QWidget):
             outer = c.outer_diameter
             thick = c.thickness
 
-            if units == "µm":
+            if units == "um":
                 inner /= 1000.0
                 outer /= 1000.0
                 thick /= 1000.0
@@ -459,9 +459,9 @@ class ImagePanel(QWidget):
             logger.println(f"|   Axon {c.ID}")
             logger.print("|       g-ratio: "); logger.println(f"{round(c.g_ratio, 3)}", color="gray")
             logger.print("|       circularity: "); logger.println(f"{round(c.circularity, 3)}", color="gray")
-            logger.print("|       inner diameter: "); logger.println(f"{round(c.inner_diameter, 3)} {units}", color="gray")
-            logger.print("|       outer diameter: "); logger.println(f"{round(c.outer_diameter, 3)} {units}", color="gray")
-            logger.print("|       myelin thickness: "); logger.println(f"{round(c.thickness, 3)} {units}", color="gray")
+            logger.print("|       inner diameter: "); logger.println(f"{round(inner, 3)} {units}", color="gray")
+            logger.print("|       outer diameter: "); logger.println(f"{round(outer, 3)} {units}", color="gray")
+            logger.print("|       myelin thickness: "); logger.println(f"{round(thick, 3)} {units}", color="gray")
             logger.println("|")
 
     def _on_processing_error(self, message: str):

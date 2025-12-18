@@ -130,7 +130,11 @@ class SettingsPanel(QWidget):
     
     def emit_fields(self):
         """Emits signal containing all settings fields."""
-        self.settings_changed.emit(self.to_settings())
+        try:
+            current_settings = self.to_settings() # might error because text fields could be empty which can't be converted to numbers
+            self.settings_changed.emit(current_settings)
+        except Exception as e:
+            pass
 
     def set_settings(self, settings: Settings):
         """Set current parameter values to the given settings."""

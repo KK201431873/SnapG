@@ -75,7 +75,7 @@ class Settings(BaseModel):
     """Distance per pixel."""
     
     scale_units: str
-    """Unit of distance per pixel (either `µm` or `nm`)."""
+    """Unit of distance per pixel (either `um` or `nm`)."""
 
     resolution_divisor: float
     """Factor to shrink the resolution of the image by before processing."""
@@ -336,7 +336,7 @@ class SegmentationData(BaseModel):
     """List of toggle states for each axon."""
 
     preferred_units: str
-    """User-preferred distance unit. Either `nm` or `µm`. **NOTE:** `ContourData` length measurements are all in **nanometers (`nm`)**. They must be converted to `µm`."""
+    """User-preferred distance unit. Either `nm` or `um`. **NOTE:** `ContourData` length measurements are all in **nanometers (`nm`)**. They must be converted to `um`."""
     
     @staticmethod
     def from_file(file_path: Path, caller: object) -> 'SegmentationData | None':

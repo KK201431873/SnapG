@@ -193,11 +193,11 @@ class FileTabSelector(QTabWidget):
         """Go to next tab."""
         if self.count() <= 1:
             return
-        self.setCurrentIndex(1 + (self.currentIndex() % (self.count() - 1)))
+        self.setCurrentIndex(1 + (min(self.currentIndex(), self.count() - 2)))
 
     def _prev_tab(self):
         """Go to previous tab."""
         if self.count() <= 1:
             return
-        self.setCurrentIndex(1 + (self.currentIndex() - 2) % (self.count() - 1))
+        self.setCurrentIndex(1 + (max(self.currentIndex() - 2, 0)))
 

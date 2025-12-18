@@ -28,7 +28,7 @@ QMenuBar::item:selected, QMenuBar::item:hover {
 /* ProcessPanel */
 QDockWidget#ProcessPanel {
     min-width: 300px;
-    max-width: 500px;
+    max-width: 600px;
 }
 
 QWidget#ProcessPanel {
@@ -69,7 +69,7 @@ QPushButton#StopProcessing:disabled {
 /* SettingsPanel */
 QDockWidget#SettingsPanel {
     min-width: 300px;
-    max-width: 500px;
+    max-width: 600px;
 }
 
 QWidget#SettingsPanel {
@@ -90,7 +90,7 @@ QFrame#Parameter QLabel {
 /* OutputPanel */
 QDockWidget#OutputPanel {
     min-height: 50px;
-    max-height: 400px;
+    max-height: 800px;
 }
 
 QWidget#OutputPanel {

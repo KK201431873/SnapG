@@ -3,10 +3,13 @@ from pathlib import Path
 from PySide6.QtCore import (
     Qt,
     QSize,
-    QThread
+    QThread,
+    Slot,
+    QUrl
 )
 from PySide6.QtGui import (
-    QCloseEvent
+    QCloseEvent,
+    QDesktopServices
 )
 from PySide6.QtWidgets import (
     QDialog,
@@ -39,6 +42,8 @@ class GenerateDataDialog(QDialog):
     ):
         super().__init__(parent)
         self.chosen_files: list[tuple[Path, bool]] = []
+        self._dest_path: Path | None = None
+        self._formatted_datetime: str | None = None
 
         self.setWindowTitle("Generate Segmentation Data")
         self.setModal(True)
@@ -48,6 +53,9 @@ class GenerateDataDialog(QDialog):
 
         # file list
         self.list_widget = QListWidget()
+        def _handle_item_changed(_):
+            self.chosen_files = self._get_chosen_files()
+        self.list_widget.itemChanged.connect(_handle_item_changed)
 
         # --- buttons ---
         button_layout = QVBoxLayout()
@@ -94,7 +102,7 @@ class GenerateDataDialog(QDialog):
         button_bottom_layout.addStretch()
         button_layout.addLayout(button_bottom_layout)
 
-        cancel_btn = QPushButton("Done")
+        cancel_btn = QPushButton("Close")
         cancel_btn.clicked.connect(self.hide)
 
         ok_btn = QPushButton("Generate")
@@ -104,6 +112,17 @@ class GenerateDataDialog(QDialog):
         button_bottom_layout.addWidget(ok_btn)
 
         main_layout.addLayout(button_layout)
+        
+    def _get_chosen_files(self) -> list[tuple[Path, bool]]:
+        """Returns the user-updated list of file selections."""
+        result: list[tuple[Path, bool]] = []
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            result.append((
+                item.data(Qt.ItemDataRole.UserRole), 
+                item.checkState() == Qt.CheckState.Checked
+            ))
+        return result
     
     def _update_selection_buttons(self):
         """Enable or disable the (de)select all buttons based on whether the list is empty."""
@@ -266,7 +285,7 @@ class GenerateDataDialog(QDialog):
     def _generate_data(self):
         """Validate files and request worker to generate data from segmentation files."""
         # check if images selected
-        raw_image_paths: list[Path] = [p for p, checked in self.chosen_images if checked]
+        raw_image_paths: list[Path] = [p for p, checked in self.chosen_files if checked] 
         if len(raw_image_paths) == 0:
             QMessageBox.warning(self, "Generate Data", "Please choose segmentation files to generate data for.")
             return
@@ -320,8 +339,8 @@ class GenerateDataDialog(QDialog):
                     del removed_item
                 except Exception as e:
                     logger.err("_generate_data(): Tried to remove invalid file that did not exist in list.", self)
-            self.chosen_images = [
-                img for img in self.chosen_images if img[0] not in invalid_paths
+            self.chosen_files = [
+                img for img in self.chosen_files if img[0] not in invalid_paths
             ]
             self._update_selection_buttons()
         # check if no data left
@@ -343,15 +362,14 @@ class GenerateDataDialog(QDialog):
             AppState.annotation_font_path(),
             formatted_datetime
         )
-
         self.worker.moveToThread(self.worker_thread)
 
+        # connect signals
+        self._dest_path = dest_path
+        self._formatted_datetime = formatted_datetime
+
         self.worker_thread.started.connect(self.worker.run)
-        self.worker.finished.connect(
-            lambda imgs, csv: self._on_generate_finished(
-                imgs, csv, dest_path, formatted_datetime
-            )
-        )
+        self.worker.finished.connect(self._on_generate_finished)
         self.worker.error.connect(self._on_generate_error)
 
         # cleanup
@@ -361,15 +379,19 @@ class GenerateDataDialog(QDialog):
 
         self.worker_thread.start()
     
+    @Slot(list, list)
     def _on_generate_finished(
         self,
         out_imgs: list[tuple[str, npt.NDArray]],
-        csv_lines: list[str],
-        dest_path: Path,
-        formatted_datetime: str
+        csv_lines: list[str]
     ):
         """Receive data from worker and write to destination path."""
         self.busy_dialog.hide()
+        
+        dest_path = self._dest_path
+        formatted_datetime = self._formatted_datetime
+        if dest_path is None or formatted_datetime is None:
+            return # sanity check
 
         save_dir = dest_path / f"SnapG_segmentation_data_{formatted_datetime}"
         save_dir.mkdir(parents=True, exist_ok=True)
@@ -386,8 +408,10 @@ class GenerateDataDialog(QDialog):
         QMessageBox.information(
             self,
             "Generate Data",
-            "Segmentation data generated successfully."
+            "Segmentation data was generated successfully."
         )
+        
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(save_dir)))
     
     def _on_generate_error(self, message: str):
         """Handle worker errors."""

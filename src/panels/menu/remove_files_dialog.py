@@ -36,17 +36,21 @@ class RemoveFilesDialog(QDialog):
         list_layout.setStretch(1, 1)
 
         # --- image files ---
+        image_files_cp = image_files.copy()
+        image_files_cp.sort()
         self.image_list = self._create_file_list(
             "Image Files",
-            image_files,
+            image_files_cp,
         )
         self.image_list["group"].setMinimumWidth(200)
         self.image_list["group"].setMinimumHeight(200)
 
         # --- segmentation files ---
+        seg_files_cp = seg_files.copy()
+        seg_files_cp.sort()
         self.seg_list = self._create_file_list(
             "Segmentation Files",
-            seg_files,
+            seg_files_cp,
         )
         self.seg_list["group"].setMinimumWidth(200)
         self.seg_list["group"].setMinimumHeight(200)
