@@ -85,7 +85,7 @@ class SettingsPanel(QWidget):
         self.erode_prm_widget.setToolTip("Erode: How much to contract the white threshold region by, in pixels. Can be used with Dilate to close small black gaps in the threshold image (morphological closing)")
         self.min_size_prm_widget.setToolTip("Min Size: The minimum contour bounding box size as a proportion of the entire image in order to be classified as an axon. Ranges from 0 (nothing) to 1 (the whole image).")
         self.max_size_prm_widget.setToolTip("Max Size: The maximum contour bounding box size as a proportion of the entire image in order to be classified as an axon. Ranges from 0 (nothing) to 1 (the whole image).")
-        self.convexity_prm_widget.setToolTip("Convexity: The minimum convexity for a contour to be classified as an axon. Convexity is calculated by (convex hull area) / (contour area). Ranges from 0 (a thin line) to 1 (perfectly convex)")
+        self.convexity_prm_widget.setToolTip("Convexity: The minimum convexity for a contour to be classified as an axon. Convexity is calculated by (contour area) / (convex hull area). Ranges from 0 (a thin line) to 1 (perfectly convex)")
         self.circularity_prm_widget.setToolTip("Circularity: The minimum circularity for a contour to be classified as an axon. Circularity is calculated by 4pi * (contour area) / (contour perimeter) ^ 2. Ranges from 0 (a thin line) to 1 (perfect circle)")
         self.thick_percent_prm_widget.setToolTip("Thickness Percentile: Used to extract myelin thickness from a numerical distribution. Higher values tend to thicker myelin estimations, while lower values tend to thinner myelin. Ranges from 0 to 100.")
 

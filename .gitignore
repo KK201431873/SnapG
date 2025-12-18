@@ -1,3 +1,4 @@
+.venv
 __program_config__
 src/__appdata__/*
 

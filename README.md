@@ -1,63 +1,18 @@
 # SnapG
 
-Python programs for partially automating myelinated axon segmentation in microscopy images.
+PySide6 application for partially automating myelinated axon segmentation in microscopy images.
 
 ---
 
 ## Installation
 
-1. Download or clone this repository. Run these commands if you are cloning using git:
-
-    ```bash
-    git clone https://github.com/KK201431873/SnapG.git
-    cd SnapG
-    ```
-
-2. Install Python 3 if not already installed.
-
-3. Install dependencies:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-   If on newer versions, use:
-    ```bash
-    py -m pip install -r requirements.txt
-    ```
+TODO
 
 ---
 
 ## How to Use
 
-There are two main Python files:
-
-- `gratio_tuner.py`: allows the user to tune the segmentation algorithm to an image and download those settings.
-- `gratio_image_processor.py`: applies those settings to a batch of images and then allows the user to clean/export the data.
-
-### Using `gratio_tuner.py`
-
-1. Running the program
-
-    (**Shell File**) Double click `run_gratio_tuner.sh` in your file explorer. A terminal should automatically open and begin running the program.
-
-    (**Terminal**) Open a terminal in the project directory and run:
-
-      ```bash
-      python gratio_tuner.py
-      ```
-
-    If on newer versions, use:
-      ```bash
-      py gratio_tuner.py
-      ```
-
-2. Select the image you want to tune the algorithm to.
-
-3. Two windows will appear:
-   - A thresholded version of your image under a "nm per pixel" textbox.  
-      - Paste in the image's corresponding nm/pixel value and click the "Set" button.  
-   - A control panel with several sliders.
+TODO
 
 #### Adjusting the Sliders
 
@@ -98,25 +53,6 @@ There are two main Python files:
 
 ---
 
-### Using `gratio_image_processor.py`
-
-1. Running the program
-
-    (**Shell File**) Double click `run_gratio_image_processor.sh` in your file explorer. A terminal should automatically open and begin running the program.
-
-    (**Terminal**) Run:
-
-      ```bash
-      python gratio_image_processor.py
-      ```
-
-    If on newer versions, use:
-      ```bash
-      py gratio_image_processor.py
-      ```
-
-2. A GUI will appear with five buttons and a logs textbox.
-
 #### Buttons Instructions
 
 Click these buttons in order:
@@ -131,8 +67,8 @@ Click these buttons in order:
 
 ---
 
-## Modifying the Algorithm
+## Development
 
-The segmentation algorithm is in the `process_image(...)` functions in both Python files. Feel free to edit the code in `gratio_tuner.py`, but make sure to copy your changes to `gratio_image_processor.py` to maintain consistency.
+TODO
 
 ---
