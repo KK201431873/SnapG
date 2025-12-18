@@ -168,7 +168,7 @@ def process_image(
     TWO_PI = 2 * math.pi
     img_h = input_image.shape[0]
     img_w = input_image.shape[1]
-    draw_scale = int(8 * img_h / 4096)
+    draw_scale = int(8 * max(img_h, img_w) / 4096)
 
     if font_path is not None:
         font = ImageFont.truetype(font_path, max(15, int(15 * draw_scale)))
@@ -260,16 +260,15 @@ def process_image(
         # Calculate g-ratio & circularity
         inner_contour_perimeter = cv2.arcLength(inner_contour[0], True)
         inner_radius = inner_contour_perimeter / TWO_PI
-        outer_radius = cv2.arcLength(outer_contour[0], True) / TWO_PI
 
-        g_ratio = inner_radius / outer_radius
+        g_ratio = inner_radius / (inner_radius + thickness_px)
         circularity = (
             4 * math.pi * cv2.contourArea(inner_contour[0]) / (inner_contour_perimeter ** 2)
             if inner_contour_perimeter != 0 else 0
         )
 
         inner_diameter = (2 * inner_radius) * nm_per_pixel * resolution_divisor
-        outer_diameter = (2 * outer_radius) * nm_per_pixel * resolution_divisor
+        outer_diameter = inner_diameter + (2 * thickness_px) * nm_per_pixel * resolution_divisor
         thickness = thickness_px * nm_per_pixel * resolution_divisor
 
         # Draw contours on output image

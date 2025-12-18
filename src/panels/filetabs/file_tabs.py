@@ -37,6 +37,7 @@ class FileTabSelector(QTabWidget):
     def __init__(self, app_state: AppState):
         super().__init__()
         self.setObjectName("FileTabs")
+        self.last_opened_file: Path | None = None
 
         # -- config --
         self.setTabBar(ScrollableTabBar(self))
@@ -47,6 +48,12 @@ class FileTabSelector(QTabWidget):
 
         # minimum width
         self.setStyleSheet("QTabBar::tab { min-width: 125px; min-height: 30px }")
+
+        # dummy tab
+        self.addTab(QWidget(), "")
+        self.setTabEnabled(0, False)
+        self.setTabVisible(0, False)
+        self.setCurrentIndex(0)
 
         # tab state signals
         self.currentChanged.connect(self._broadcast_tab_changed)
@@ -69,24 +76,25 @@ class FileTabSelector(QTabWidget):
 
     def set_files(self, image_files: list[Path], seg_files: list[Path]):
         """Update the current file tabs with the given set of image and segmentation files."""
-        if None in image_files or None in seg_files:
-            return
-        
         with QSignalBlocker(self):
             paths = self._get_tab_paths()
 
             # add new image paths
             for image_path in image_files:
+                if image_path is None:
+                    continue
                 if image_path not in paths:
                     self._create_new_tab(image_path)
 
             # add new segmentation paths
             for seg_path in seg_files:
+                if seg_path is None:
+                    continue
                 if seg_path not in paths:
                     self._create_new_tab(seg_path)
 
             # remove disappeared paths
-            for i in range(len(paths) - 1, -1, -1):
+            for i in range(len(paths) - 1, 0, -1):
                 path = paths[i]
                 if path not in image_files and path not in seg_files:
                     self.removeTab(i)
@@ -94,7 +102,7 @@ class FileTabSelector(QTabWidget):
     def set_current_file(self, current_file: Path):
         """Sets the currently selected file tab. Creates a new tab if `current_file` doesn't exist."""
         if current_file is None:
-            self.setCurrentIndex(-1)
+            self.setCurrentIndex(0) # dummy tab
             return
         
         paths = self._get_tab_paths()
@@ -103,6 +111,7 @@ class FileTabSelector(QTabWidget):
         else:
             index = paths.index(current_file)
         self.setCurrentIndex(index)
+        self.last_opened_file = current_file
     
     def _create_new_tab(self, tab_path: Path) -> int:
         """
@@ -135,13 +144,16 @@ class FileTabSelector(QTabWidget):
     def _broadcast_tab_changed(self, index: int):
         """Receive tab change index and broadcast corresponding file path."""
         paths = self._get_tab_paths()
-        if not (0 <= index <= len(paths) - 1):
+        if not (1 <= index <= len(paths) - 1):
             return # sanity check
         
         path = paths[index]
         if path is None:
             return
         
+        if path == self.last_opened_file:
+            return # user just moved the tab
+
         # broadcast
         is_image = path.suffix.lower() != ".seg"
         self.tab_changed.emit(path, is_image)
@@ -156,7 +168,7 @@ class FileTabSelector(QTabWidget):
             )
 
         paths = self._get_tab_paths()
-        if not (0 <= index <= len(paths) - 1):
+        if not (1 <= index <= len(paths) - 1):
             show_close_error()
             return # sanity check
         
@@ -179,13 +191,13 @@ class FileTabSelector(QTabWidget):
     
     def _next_tab(self):
         """Go to next tab."""
-        if self.count() == 0:
+        if self.count() <= 1:
             return
-        self.setCurrentIndex((self.currentIndex() + 1) % self.count())
+        self.setCurrentIndex(1 + (self.currentIndex() % (self.count() - 1)))
 
     def _prev_tab(self):
         """Go to previous tab."""
-        if self.count() == 0:
+        if self.count() <= 1:
             return
-        self.setCurrentIndex((self.currentIndex() - 1) % self.count())
+        self.setCurrentIndex(1 + (self.currentIndex() - 2) % (self.count() - 1))
 

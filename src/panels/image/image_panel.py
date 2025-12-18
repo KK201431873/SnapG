@@ -4,7 +4,8 @@ from PySide6.QtCore import (
     QThread,
     Qt,
     QTimer,
-    Slot
+    Slot,
+    QPoint
 )
 from PySide6.QtGui import (
     QImage,
@@ -24,13 +25,16 @@ from panels.image.imgproc_worker import ImgProcWorker
 
 from models import AppState, SegmentationData, ContourData, ImagePanelState, Settings, FileMan, logger
 
+from PIL import Image, ImageFont, ImageDraw
 from pathlib import Path
 from enum import Enum
 import numpy.typing as npt
 import numpy as np
 import traceback
 import pickle
+import math
 import cv2
+import os
 
 class Mode(Enum):
     NO_IMAGE = 0
@@ -73,7 +77,12 @@ class ImagePanel(QWidget):
         
         # image view
         self.image_view = ImageView(self, app_state)
+        self.image_view.mouse_pressed.connect(self._handle_mouse_pressed)
         vlayout.addWidget(self.image_view)
+        # these states are for REVIEW mode
+        self.exclude_deselected_contours: bool = False
+        self.exclude_all_contours: bool = False
+        self.font_path = Path("assets/JetBrainsMono-Bold.ttf")
         
         # image processing thread
         self.processing_thread = QThread(self)
@@ -121,14 +130,14 @@ class ImagePanel(QWidget):
         else:
             return None
     
-    def add_images(self, image_paths: list[Path]):
-        """Add new image files."""
-        validated_paths = [p for p in image_paths if self._validate_file(p, remove=False)]
+    def add_files(self, file_paths: list[Path]):
+        """Add new image or segmentation files"""
+        validated_paths = [p for p in file_paths if self._validate_file(p, remove=False)]
         if len(validated_paths) == 0:
             return
 
         # remove duplicates within the given files
-        filtered_paths = [] 
+        filtered_paths: list[Path] = [] 
         for p in validated_paths:
             if p not in filtered_paths:
                 filtered_paths.append(p)
@@ -137,17 +146,21 @@ class ImagePanel(QWidget):
         
         # remove files that are already opened
         last_duplicate: Path | None = None
-        for p in self.image_files:
+        for p in self.image_files + self.seg_files:
             if p in filtered_paths:
                 last_duplicate = p
                 filtered_paths.remove(p) 
         
         # open the last new file, if empty then open the last duplicate file
         if len(filtered_paths) > 0:
-            self.image_files += filtered_paths
-            self._set_current_file(filtered_paths[-1], is_image=True)
+            for p in filtered_paths:
+                if FileMan.path_is_image(p):
+                    self.image_files.append(p)
+                else:
+                    self.seg_files.append(p)
+            self._set_current_file(filtered_paths[-1], is_image=FileMan.path_is_image(filtered_paths[-1]))
         elif last_duplicate is not None:
-            self._set_current_file(last_duplicate, is_image=True)
+            self._set_current_file(last_duplicate, is_image=FileMan.path_is_image(last_duplicate))
         
         # request imgproc settings
         self.settings_panel.emit_fields()
@@ -185,7 +198,7 @@ class ImagePanel(QWidget):
         
         # handle current file behavior
         file_list = self.image_files if was_image else self.seg_files
-        if file_list:
+        if file_list and old_index >= 0:
             new_index = min(old_index, len(file_list) - 1)
             self._set_current_file(file_list[new_index], is_image=was_image)
         else:
@@ -250,7 +263,7 @@ class ImagePanel(QWidget):
             valid (bool): The file's validity.
         """
         extension = file_path.suffix.lower()
-        valid = file_path.is_file() and FileMan.is_image(extension)
+        valid = file_path.is_file() and (FileMan.is_image(extension) or extension == ".seg")
         if valid and extension == ".seg":
             # Try reading the .SEG file
             seg_data = self._get_segmentation_data(file_path)
@@ -287,43 +300,11 @@ class ImagePanel(QWidget):
         """ 
         try:
             with open(file_path, "rb") as f:
-                file_data = pickle.load(f)
-            data = [item[1] for item in file_data.items()]
-            # expected data
-            img_filename: str = data[0]
-            image: npt.NDArray = data[1]
-            resolution_divisor: float = data[2]
-            contour_data_raw: list[tuple[
-                int, # ID
-                npt.NDArray, # inner_contour
-                npt.NDArray, # outer_contour
-                float, # g_ratio
-                float, # circularity
-                float, # thickness
-                float, # inner_diameter
-                float # outer_diameter
-            ]] = data[3]
-            selected_states: list[bool] = data[4]
-            # process contour_data_raw
-            contour_data: list[ContourData] = []
-            for ID, inner_contour, outer_contour, g_ratio, circularity, thickness, inner_diameter, outer_diameter in contour_data_raw:
-                contour_data.append(ContourData(
-                    ID=ID,
-                    inner_contour=inner_contour,
-                    outer_contour=outer_contour,
-                    g_ratio=g_ratio,
-                    circularity=circularity,
-                    thickness=thickness,
-                    inner_diameter=inner_diameter,
-                    outer_diameter=outer_diameter
-                ))
-            return SegmentationData(
-                img_filename=img_filename,
-                image=image,
-                resolution_divisor=resolution_divisor,
-                contour_data=contour_data,
-                selected_states=selected_states
-            )
+                segmentation_data = pickle.load(f)
+            if type(segmentation_data) is not SegmentationData:
+                return None
+            else:
+                return segmentation_data
         except Exception as e:
             self._log_file_name()
             logger.println("Failed to read Segmentation File:", bold=True, color="red")
@@ -342,8 +323,7 @@ class ImagePanel(QWidget):
                     self.current_original_image = cv2.imread(str(self.current_file))
                 except Exception as e:
                     self._log_file_name()
-                    logger.println("Failed to read Image File:", bold=True, color="red")
-                    logger.println(traceback.format_exc(), color="red")
+                    logger.err(f"update_image(): Failed to read image file: {traceback.format_exc()}", self)
             self._process_current_image()
         
         # review: get image from seg file
@@ -351,15 +331,29 @@ class ImagePanel(QWidget):
             self.current_seg_data = self._get_segmentation_data(self.current_file)
             if self.current_seg_data is not None:
                 self.current_original_image = self.current_seg_data.image
-            self.display_image = self.current_original_image
+                self.display_image = self._annotate_review_image(self.current_seg_data)
+            else:
+                self.display_image = self.current_original_image
 
         # keep track of if file changed
         self.last_current_file = self.current_file
 
         # set image
-        if self.display_image is None:
+        if self.display_image is None or self.current_original_image is None:
+            logger.err("update_image(): display_image or current_original_image is None, not setting image.", self)
             return
-        self.image_view.set_image(self.display_image)
+        if self.mode == Mode.REVIEW:
+            if self.current_seg_data is None:
+                logger.err("update_image(): current_seg_data is None in REVIEW mode, not setting image.", self)
+                return
+            resolution_divisor = self.current_seg_data.resolution_divisor
+        else:
+            resolution_divisor = 1
+        self.image_view.set_image(
+            self.display_image,
+            (int(self.current_original_image.shape[1] * resolution_divisor), 
+             int(self.current_original_image.shape[0] * resolution_divisor))
+        )
     
     def _process_current_image(self):
         """Process the current image according to segmentation settings."""
@@ -381,8 +375,18 @@ class ImagePanel(QWidget):
 
     def _on_processing_finished(self, image: np.ndarray, contour_data_list: list[ContourData] | None):
         """Receive worker thread results and set display image."""
+        if self.mode != Mode.TUNE:
+            return
+        
+        if self.current_original_image is None:
+            logger.err("_on_processing_finished(): current_original_image is None. Not displaying image...", self)
+            return
+        
         self.display_image = image
-        self.image_view.set_image(self.display_image)
+        self.image_view.set_image(
+            self.display_image, 
+            (self.current_original_image.shape[1], self.current_original_image.shape[0])
+        )
 
         # log data
         self._log_file_name()
@@ -446,6 +450,119 @@ class ImagePanel(QWidget):
     def get_seg_files(self) -> list[Path]:
         """Returns this `ImagePanel`'s segmentation files."""
         return [Path(p) for p in self.seg_files]
+
+    def _handle_mouse_pressed(self, is_in_image: bool, image_point: QPoint):
+        """Review mode logic."""
+        # Sanity checks
+        if self.mode != Mode.REVIEW:
+            return
+        if not is_in_image:
+            return
+        if self.current_file is None or self.current_seg_data is None:
+            return
+        
+        # check for clicks on contours
+        contour_data = self.current_seg_data.contour_data
+        res_div = self.current_seg_data.resolution_divisor
+        closest_valid_contour: tuple[int | None, float] = (None, -1)
+        for i, contour in enumerate(contour_data):
+            M = cv2.moments(contour.inner_contour)
+            if M["m00"] == 0:
+                continue
+            cx = int(M["m10"] / M["m00"] * res_div)
+            cy = int(M["m01"] / M["m00"] * res_div)
+            diameter = cv2.arcLength(contour.inner_contour, closed=True)/(2*math.pi) * res_div
+            distance = math.hypot(
+                cx - image_point.x(),
+                cy - image_point.y()
+            )
+            if (distance <= diameter) and (closest_valid_contour[0] is None or distance < closest_valid_contour[1]):
+                closest_valid_contour = (i, distance)
+
+        # toggle if contour clicked
+        if closest_valid_contour[0] is not None:
+            index = closest_valid_contour[0]
+            self.current_seg_data.selected_states[index] = not self.current_seg_data.selected_states[index]
+            self._save_segmentation_atomic(self.current_file, self.current_seg_data)
+            self.update_image()
+        
+    def _save_segmentation_atomic(self, file: Path, seg_data: SegmentationData):
+        """Save the given `SegmentationData` at the given `Path` atomically (safely)."""
+        tmp_path = file.with_suffix(".seg.tmp")
+        with open(tmp_path, "wb") as f:
+            pickle.dump(seg_data, f)
+            f.flush()
+            os.fsync(f.fileno())
+        tmp_path.replace(file)
+
+    def _annotate_review_image(self, seg_data: SegmentationData) -> npt.NDArray:
+        """Draw colored contours on segmentation image."""
+        display_img = seg_data.image.copy()
+        if len(display_img.shape) == 2: # grayscale, cvt to color
+            display_img = cv2.cvtColor(display_img, cv2.COLOR_GRAY2BGR)
+        res_div = seg_data.resolution_divisor
+        contour_data = seg_data.contour_data
+        selected_states = seg_data.selected_states
+
+        if len(contour_data) != len(selected_states):
+            logger.err("_annotate_review_image(): Length of contour data is not equal to length of selected states", self)
+
+        # scale image down for processing speed
+        im_h = display_img.shape[0]
+        im_w = display_img.shape[1]
+        scale_factor = 1.0
+        if max(im_h, im_w) > 512:
+            scale_factor = 512 / max(im_h, im_w)
+            display_img = cv2.resize(display_img, None, fx=scale_factor, fy=scale_factor) 
+
+        def scale_contour(cnt: npt.NDArray, s):
+            return (cnt * s).astype(np.int32)
+
+        # draw contours
+        for i, c in enumerate(contour_data):
+            if (self.exclude_deselected_contours and not selected_states[i]) or self.exclude_all_contours:
+                continue  # Hide excluded in preview
+            inner = scale_contour(c.inner_contour, scale_factor)
+            outer = scale_contour(c.outer_contour, scale_factor)
+            M = cv2.moments(inner)
+            if M["m00"] == 0:
+                continue
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+            color = (0, 255, 0) if selected_states[i] else (0, 0, 255)
+            cv2.drawContours(display_img, [inner], -1, color, 2)
+            cv2.drawContours(display_img, [outer], -1, color, 2)
+            cv2.circle(display_img, (cx, cy), 4, (0, 0, 0), -1)
+
+        # draw text
+        img_h = display_img.shape[0]
+        img_w = display_img.shape[1]
+        draw_scale = int(8 * max(img_h, img_w) / 4096)
+        line_spacing = 14*draw_scale
+        out_pil = Image.fromarray(cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB))
+        font = ImageFont.truetype(self.font_path, int(15*draw_scale))
+        draw = ImageDraw.Draw(out_pil)
+        for i, c in enumerate(contour_data):
+            if (self.exclude_deselected_contours and not selected_states[i]) or self.exclude_all_contours:
+                continue
+            inner = scale_contour(c.inner_contour, scale_factor)
+            M = cv2.moments(inner)
+            if M["m00"] == 0:
+                continue
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"] - 6*draw_scale)
+
+            ID = i + 1
+            color = (255, 255, 255) if selected_states[i] else (192, 192, 192)
+            def draw_shadow_text(dx,dy):
+                draw.text((int(cx-5*draw_scale*len(f"#{ID}"))+dx, cy-1/2*line_spacing+dy), f"#{ID}", font=font, fill=color)
+            for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
+                draw_shadow_text(dx,dy)
+            color = (0, 0, 255) if selected_states[i] else (64, 64, 64)
+            draw.text((int(cx-5*draw_scale*len(f"#{ID}")), cy-1/2*line_spacing), f"#{ID}", font=font, fill=color)
+            
+        display_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
+        return display_img
     
     def to_state(self) -> ImagePanelState:
         """Return all current fields as an `ImagePanelState` object."""
@@ -459,6 +576,19 @@ class ImagePanel(QWidget):
         )
     
     def closeEvent(self, event: QCloseEvent) -> None:
+        # save segmentation data
+        if self.mode == Mode.REVIEW and self.current_file is not None and self.current_seg_data is not None:
+            try:
+                self._save_segmentation_atomic(self.current_file, self.current_seg_data)
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Save Error",
+                    f"Failed to save segmentation data:\n{e}"
+                )
+                event.ignore()
+                return
+        # stop worker
         if self.worker:
             self.worker.stop()
         self.processing_thread.quit()

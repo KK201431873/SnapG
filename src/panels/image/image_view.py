@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QApplication
 )
 
-from models import AppState
+from models import AppState, logger
 
 import numpy.typing as npt
 import numpy as np
@@ -37,6 +37,7 @@ class ImageView(QWidget):
         # image state
         self.pixmap: QPixmap | None = None
         self.scaled_pixmap: QPixmap | None = None
+        self.base_img_dims: tuple[int, int] | None = None
         self.center_point: tuple[int, int] = app_state.image_panel_state.view_center_point
         self.image_width: int = app_state.image_panel_state.view_image_width
         self._processing: bool = False
@@ -58,16 +59,18 @@ class ImageView(QWidget):
         self._update_scaled_pixmap()
         self.update()
 
-    def set_image(self, img: npt.NDArray):
-        """Sets the current image to the given NumPy image."""
+    def set_image(self, img: npt.NDArray, base_img_dims: tuple[int, int]):
+        """Sets the current image to the given NumPy image, and takes the base image dimensions."""
         qimg = numpy_to_qimage(img)
         self.pixmap = QPixmap.fromImage(qimg)
+        self.base_img_dims = base_img_dims
         self._update_scaled_pixmap()
         self.update()
     
     def clear_image(self):
         """Clears the current image and displays \"No Image Selected\"."""
         self.pixmap = None
+        self.base_img_dims = None
         self._update_scaled_pixmap()
         self.update()
     
@@ -168,8 +171,8 @@ class ImageView(QWidget):
             is_in_image (bool): Whether the point is within the image.
             image_point (QPoint): The rescaled image-relative coordinates of the point.
         """
-        if self.pixmap is None or self.scaled_pixmap is None:
-            print(RuntimeError("_to_image_coords() called when pixmap or scaled_pixmap is None."))
+        if self.pixmap is None or self.scaled_pixmap is None or self.base_img_dims is None:
+            logger.err("_in_image(): called when pixmap, scaled_pixmap, or base_img_dims is None.", self)
             return False, QPoint()
         # get top left corner
         scrn_w, scrn_h = self.size().toTuple()
@@ -187,8 +190,8 @@ class ImageView(QWidget):
 
         # rescale coordinates
         image_point = QPoint(
-            int(image_point.x() * self.pixmap.width() / im_w),
-            int(image_point.y() * self.pixmap.height() / im_h)
+            int(image_point.x() * self.base_img_dims[0] / im_w),
+            int(image_point.y() * self.base_img_dims[1] / im_h)
         )
         return is_in_image, image_point
 

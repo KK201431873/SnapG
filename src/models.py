@@ -5,6 +5,7 @@ from PySide6.QtCore import (
 )
 
 from pydantic import BaseModel, ConfigDict
+from pathlib import Path
 import numpy.typing as npt
 import numpy as np
 
@@ -331,7 +332,7 @@ class FileMan():
     @staticmethod
     def image_extensions() -> set[str]:
         """Return a set of valid image extension strings."""
-        return {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif', '.seg'}
+        return {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.tif'}
 
     @staticmethod
     def is_image(extension: str) -> bool:
@@ -340,6 +341,14 @@ class FileMan():
             bool: Whether the given file extension represents an image.
         """
         return extension in FileMan.image_extensions()
+
+    @staticmethod
+    def path_is_image(path: Path) -> bool:
+        """
+        Returns:
+            bool: Whether the given `Path` represents an image.
+        """
+        return FileMan.is_image(path.suffix.lower())
 
 
 class Logger(QObject):
@@ -370,7 +379,7 @@ class Logger(QObject):
         self.printTriggered.emit(str(s), bold, italic, underline, color)
     
     def println(self, 
-              s: str, 
+              s: str = "", 
               bold: bool = False,
               italic: bool = False,
               underline: bool = False,
@@ -386,6 +395,11 @@ class Logger(QObject):
             color (str): Standard HTML color.
         """
         self.print(str(s) + "\n", bold, italic, underline, color)
+    
+    def err(self, e: str, caller: object):
+        """Print an error message to the text display."""
+        self.print(f"Error in {caller.__class__.__name__}: ", bold=True, color="red")
+        self.println(e, color="red")
     
     def clear(self):
         """Clear the text display."""

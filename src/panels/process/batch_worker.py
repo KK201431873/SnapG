@@ -29,8 +29,9 @@ def process_single_image(args: tuple[Path, npt.NDArray, Settings]) -> Segmentati
     )
 
     # process
+    img_gray = cvtColor(image, COLOR_BGR2GRAY)
     _, contour_data_list = process_image( # don't use out_img
-        image,
+        img_gray,
         settings.resolution_divisor,
         False, # don't show threshold
         False, # don't show text,
@@ -86,14 +87,13 @@ class BatchWorker(QObject):
         for p in image_paths:
             img_np = imread(str(p))
             if img_np is not None:
-                img_preprocessed = cvtColor(img_np, COLOR_BGR2GRAY)
-                img_preprocessed = resize(
-                    img_preprocessed,
+                img_shrunk = resize(
+                    img_np,
                     None,
                     fx=1 / settings.resolution_divisor,
                     fy=1 / settings.resolution_divisor
                 )
-                images.append((p, img_preprocessed))
+                images.append((p, img_shrunk))
 
         # begin processing
         formatted_datetime = datetime.now().strftime("%Y%m%d_%H%M%S")

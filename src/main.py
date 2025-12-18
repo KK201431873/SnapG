@@ -100,6 +100,7 @@ class MainWindow(QMainWindow):
         # File signals
         self.menu_bar.open_settings_triggered.connect(self.open_settings_file)
         self.menu_bar.open_images_triggered.connect(self.open_image_files)
+        self.menu_bar.open_seg_triggered.connect(self.open_seg_files)
         self.menu_bar.save_settings_triggered.connect(self.save_settings_to_file)
         self.menu_bar.save_image_view_triggered.connect(self.save_image_to_file)
         self.menu_bar.close_files_triggered.connect(self.close_multiple_files)
@@ -177,7 +178,17 @@ class MainWindow(QMainWindow):
             filter="Images (*.jpg *.jpeg *.png *.gif *.bmp *.tiff *.tif)"
         )
         file_paths = [Path(s) for s in file_names]
-        self.image_panel.add_images(file_paths)
+        self.image_panel.add_files(file_paths)
+    
+    def open_seg_files(self):
+        """Show dialog to open segmentation files."""
+        file_names, _ = QFileDialog.getOpenFileNames(
+            parent=self, 
+            caption="Open Segmentation File(s)",
+            filter="SEG Files (*.seg)"
+        )
+        file_paths = [Path(s) for s in file_names]
+        self.image_panel.add_files(file_paths)
 
     def open_settings_file(self):
         """Show dialog to open settings file."""

@@ -51,6 +51,9 @@ class MenuBar(QMenuBar):
     open_images_triggered = Signal()
     """Emits when the user requests to open image files."""
 
+    open_seg_triggered = Signal()
+    """Emits when the user requests to open segmentation files."""
+
     save_settings_triggered = Signal()
     """Emits when the user requests to save the current settings."""
 
@@ -91,6 +94,7 @@ class MenuBar(QMenuBar):
         open_image_action.triggered.connect(self.open_images_triggered.emit)
         
         open_seg_action = QAction("Segmentation file(s)", self)
+        open_seg_action.triggered.connect(self.open_seg_triggered.emit)
 
         self.open_file_menu.addActions([
             open_settings_action, 
@@ -219,7 +223,6 @@ class MenuBar(QMenuBar):
                 "There are no files to close."
             )
             return 
-        
         dialog = RemoveFilesDialog(
             image_files=image_files,
             seg_files=seg_files,
