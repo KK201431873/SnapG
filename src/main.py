@@ -29,6 +29,7 @@ from panels.settings.settings_panel import SettingsPanel
 from panels.output.output_panel import OutputPanel
 from panels.menu.menu_bar import MenuBar
 from panels.filetabs.file_tabs import FileTabSelector
+from panels.generate.generate_data_dialog import GenerateDataDialog
 
 from models import AppState, View, Settings
 
@@ -111,6 +112,10 @@ class MainWindow(QMainWindow):
         self.menu_bar.process_visible_changed.connect(self.process_dock.setVisible)
         self.menu_bar.settings_visible_changed.connect(self.settings_dock.setVisible)
         self.menu_bar.output_visible_changed.connect(self.output_dock.setVisible)
+        # Generate signals
+        self.generate_data_dialog = GenerateDataDialog(self)
+        self.generate_data_dialog.hide()
+        self.menu_bar.gen_seg_data_triggered.connect(self.generate_data_dialog.show)
         # add to app widget
         self.setMenuBar(self.menu_bar)
 

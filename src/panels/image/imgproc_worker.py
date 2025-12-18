@@ -18,7 +18,7 @@ import cv2
 
 
 class ImgProcWorker(QObject):
-    finished = Signal(object, object) # image, segmentation data
+    finished = Signal(object, object, object) # image, segmentation data, settings
     error = Signal(str)
     processingChanged = Signal(bool)
 
@@ -115,7 +115,7 @@ class ImgProcWorker(QObject):
                     timed=True
                 )
 
-            self.finished.emit(result, contour_data_list)
+            self.finished.emit(result, contour_data_list, settings)
 
         except Exception as e:
             self.error.emit(traceback.format_exc())

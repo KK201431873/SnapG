@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict
 from pathlib import Path
 import numpy.typing as npt
 import numpy as np
-
+import traceback
+import pickle
 
 class View(BaseModel):
     """Data class to store view options."""
@@ -302,13 +303,13 @@ class ContourData(BaseModel):
     """Inner contour circularity."""
 
     thickness: float
-    """Myelin thickness."""
+    """Myelin thickness (nm)."""
 
     inner_diameter: float
-    """Inner myelin diameter."""
+    """Inner myelin diameter (nm)."""
 
     outer_diameter: float
-    """Outer myelin diameter."""
+    """Outer myelin diameter (nm)."""
 
 class SegmentationData(BaseModel):
     """Container class for segmentation data (i.e. data stored in a .seg file)."""
@@ -328,6 +329,29 @@ class SegmentationData(BaseModel):
 
     selected_states: list[bool]
     """List of toggle states for each axon."""
+
+    preferred_units: str
+    """User-preferred distance unit. Either `nm` or `µm`. **NOTE:** `ContourData` length measurements are all in **nanometers (`nm`)**. They must be converted to `µm`."""
+    
+    @staticmethod
+    def from_file(file_path: Path, caller: object) -> 'SegmentationData | None':
+        """
+        Attempts to extract segmentation data from the given .SEG file.
+        Returns:
+            segmentation_data (SegmentationData | None): data, if the file is valid, otherwise `None`.
+        """ 
+        try:
+            with open(file_path, "rb") as f:
+                segmentation_data = pickle.load(f)
+            if type(segmentation_data) is not SegmentationData:
+                return None
+            else:
+                # try reinterpreting
+                segmentation_data = SegmentationData(**segmentation_data.model_dump())
+                return segmentation_data
+        except Exception as e:
+            logger.err(f"_get_segmentation_data(): Failed to read segmentation file: {traceback.format_exc()}", caller)
+            return None
 
 
 class FileMan():

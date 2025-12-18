@@ -267,7 +267,7 @@ class ImagePanel(QWidget):
         valid = file_path.is_file() and (FileMan.is_image(extension) or extension == ".seg")
         if valid and extension == ".seg":
             # Try reading the .SEG file
-            seg_data = self._get_segmentation_data(file_path)
+            seg_data = SegmentationData.from_file(file_path, self)
             valid &= seg_data != None
         
         # notify user if not valid
@@ -293,25 +293,6 @@ class ImagePanel(QWidget):
         self.settings = settings
         self.update_image(read_seg_file=False) # changing settings should only affect TUNE mode, not REVIEW
     
-    def _get_segmentation_data(self, file_path: Path) -> SegmentationData | None:
-        """
-        Attempts to extract segmentation data from the given .SEG file.
-        Returns:
-            segmentation_data (SegmentationData | None): data, if the file is valid, otherwise `None`.
-        """ 
-        try:
-            with open(file_path, "rb") as f:
-                segmentation_data = pickle.load(f)
-            if type(segmentation_data) is not SegmentationData:
-                return None
-            else:
-                return segmentation_data
-        except Exception as e:
-            self._log_file_name()
-            logger.println("Failed to read Segmentation File:", bold=True, color="red")
-            logger.println(traceback.format_exc(), color="red")
-            return None
-    
     def update_image(self, read_seg_file: bool = True):
         """Updates this panel's `ImageView` using the current file."""
         if self.current_file is None:
@@ -330,13 +311,14 @@ class ImagePanel(QWidget):
         # review: get image from seg file
         elif self.mode == Mode.REVIEW:
             if read_seg_file:
-                self.current_seg_data = self._get_segmentation_data(self.current_file)
+                self.current_seg_data = SegmentationData.from_file(self.current_file, self)
             if self.current_seg_data is not None:
                 self.current_original_image = self.current_seg_data.image
                 self.display_image = self._annotate_review_image(self.current_seg_data)
                 self._log_file_name()
                 self._log_contour_data(
                     self.current_seg_data.contour_data, 
+                    units=self.current_seg_data.preferred_units,
                     selected_states=self.current_seg_data.selected_states
                 )
             else:
@@ -380,7 +362,7 @@ class ImagePanel(QWidget):
         self.processing = active
         self.image_view.set_processing(active)
 
-    def _on_processing_finished(self, image: np.ndarray, contour_data_list: list[ContourData] | None):
+    def _on_processing_finished(self, image: np.ndarray, contour_data_list: list[ContourData] | None, settings: Settings):
         """Receive worker thread results and set display image."""
         if self.mode != Mode.TUNE:
             return
@@ -398,9 +380,12 @@ class ImagePanel(QWidget):
         # log data
         self._log_file_name()
         if contour_data_list is not None:
-            self._log_contour_data(contour_data_list)
+            self._log_contour_data(
+                contour_data_list, 
+                settings.scale_units
+            )
         
-    def _log_contour_data(self, contour_data_list: list[ContourData], selected_states: list[bool] | None = None):
+    def _log_contour_data(self, contour_data_list: list[ContourData], units: str, selected_states: list[bool] | None = None):
         """Helper function for logging contour data to the text display."""
         # sort axons
         if selected_states is None:
@@ -435,7 +420,6 @@ class ImagePanel(QWidget):
         mean_g_ratio = round(np.mean([c.g_ratio for c in contour_data_list]), 3)
         logger.print("|   "); logger.println(f"{mean_g_ratio} (all axons)\n", color="gray")
 
-        units = "µm" if self.settings is None else self.settings.scale_units
         logger.println("Mean diameters", underline=True)
         if selected_states is not None and len(selected_cnt) > 0 and len(deselected_cnt) > 0:
             # log selected

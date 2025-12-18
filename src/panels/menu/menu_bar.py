@@ -63,6 +63,9 @@ class MenuBar(QMenuBar):
     close_files_triggered = Signal(list)
     """Emits list of `Path`s when user requests to close multiple files."""
 
+    gen_seg_data_triggered = Signal()
+    """Emits when the user requests to generate segmentation data."""
+
     def __init__(self, 
                  app_state: AppState,
                  image_panel: ImagePanel,
@@ -198,6 +201,14 @@ class MenuBar(QMenuBar):
         self.reset_view_action = QAction("Reset view", self)
         self.reset_view_action.triggered.connect(self.reset_view_triggered.emit)
         view_menu.addAction(self.reset_view_action)
+
+        # -- generate --
+        generate_menu = self.addMenu("Generate")
+
+        # segmentation data
+        self.gen_seg_data_action = QAction("Segmentation data", self)
+        self.gen_seg_data_action.triggered.connect(self.gen_seg_data_triggered.emit)
+        generate_menu.addAction(self.gen_seg_data_action)
     
     def _popup_submenu(self, submenu: QMenu):
         """Show the given menu."""

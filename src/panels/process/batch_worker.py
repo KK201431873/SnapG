@@ -58,7 +58,8 @@ def process_single_image(args: tuple[Path, npt.NDArray, Settings]) -> Segmentati
         image=image,
         resolution_divisor=settings.resolution_divisor,
         contour_data=contour_data_list,
-        selected_states=[True for _ in contour_data_list]
+        selected_states=[True for _ in contour_data_list],
+        preferred_units=settings.scale_units
     )
 
 class BatchWorker(QObject):
