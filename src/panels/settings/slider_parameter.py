@@ -1,0 +1,109 @@
+from PySide6.QtCore import (
+    Qt,
+    QSize
+)
+from PySide6.QtWidgets import (
+    QWidget,
+    QFrame,
+    QVBoxLayout,
+    QHBoxLayout, 
+    QTextEdit,
+    QLabel,
+    QSlider,
+    QSpinBox,
+    QDoubleSpinBox,
+    QSizePolicy
+)
+
+from panels.modified_widgets import NonScrollSlider, NonScrollSpinBox, NonScrollDoubleSpinBox
+
+class SliderParameter(QFrame):
+    """Adjustable fields for segmentation settings."""
+    
+    def __init__(self, 
+                 name: str, 
+                 value: int | float,
+                 valstep: int | float,
+                 bounds: tuple[int, int] | tuple[float, float],
+                 units: str = ""
+        ):
+        super().__init__()
+        self.setObjectName("SliderParameter")
+        self.setAutoFillBackground(True)
+        is_float = any(isinstance(x, float) for x in (value, valstep, *bounds))
+
+        # -- init layout --
+        hlayout = QHBoxLayout(self)
+
+        # label
+        label = QLabel(name)
+        hlayout.addWidget(label)
+
+        # slider
+        self.slider = NonScrollSlider(Qt.Orientation.Horizontal, self)
+        if is_float:
+            scale = int(1/valstep)
+            self.slider.setRange(
+                int(bounds[0] * scale),
+                int(bounds[1] * scale)
+            )
+            self.slider.setSingleStep(1)
+            self.slider.setValue(int(value * scale))
+        else:
+            scale = 1
+            self.slider.setRange(int(bounds[0]), int(bounds[1]))
+            self.slider.setSingleStep(int(valstep))
+            self.slider.setValue(int(value))
+        hlayout.addWidget(self.slider, alignment=Qt.AlignmentFlag.AlignVCenter)
+
+        # spinbox
+        if is_float:
+            self.spin = NonScrollDoubleSpinBox()
+            self.spin.setDecimals(4)
+            self.spin.setRange(*bounds)
+            self.spin.setSingleStep(valstep)
+            self.spin.setValue(value)
+        else:
+            self.spin = NonScrollSpinBox()
+            self.spin.setRange(int(bounds[0]), int(bounds[1]))
+            self.spin.setSingleStep(int(valstep))
+            self.spin.setValue(int(value))
+        self.spin.setSuffix(f" {units}")
+        self.spin.setFixedSize(QSize(100, 25))
+        hlayout.addWidget(self.spin)
+        
+        # add layout to current widget
+        self.setLayout(hlayout)
+
+        # -- event handling --
+        self.scale = scale
+        self.slider.valueChanged.connect(self._on_slider_changed)
+        self.spin.valueChanged.connect(self._on_spin_changed)
+
+    def _on_slider_changed(self, v):
+        """Slider updates spinbox."""
+        self.spin.blockSignals(True)
+        try:
+            self.spin.setValue(v / self.scale) 
+        finally:
+            self.spin.blockSignals(False)
+
+
+    def _on_spin_changed(self, v):
+        """Spinbox updates slider."""
+        self.slider.blockSignals(True)
+        try:
+            self.slider.setValue(int(round(v * self.scale)))
+        finally:
+            self.slider.blockSignals(False)
+
+    
+    def get_slider(self) -> QSlider:
+        """Return this parameter's QSlider."""
+        return self.slider
+    
+    def get_spin_box(self) -> QSpinBox | QDoubleSpinBox:
+        """Return this parameter's QSpinBox."""
+        return self.spin
+
+

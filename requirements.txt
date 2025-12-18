@@ -4,3 +4,5 @@ numpy
 keyboard
 Pillow
 screeninfo
+PySide6
+pydantic
