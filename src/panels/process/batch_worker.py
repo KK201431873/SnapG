@@ -8,18 +8,22 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from cv2 import imread, cvtColor, COLOR_BGR2GRAY, resize
+from threading import Event
 import numpy.typing as npt
 import multiprocessing
 import traceback
 import pickle
 
-def process_single_image(args: tuple[Path, npt.NDArray, Settings]) -> SegmentationData:
+def process_single_image(
+    args: tuple[Path, npt.NDArray, Settings, Event]
+) -> SegmentationData:
     """Runs image processing algorithm. Only uses local state and does not access mutable global data."""
 
     # extract args
     path: Path = args[0]
     image: npt.NDArray = args[1]
     settings: Settings = args[2]
+    stop_event = args[3]
 
     # get scale
     nm_per_pixel = (
@@ -45,12 +49,22 @@ def process_single_image(args: tuple[Path, npt.NDArray, Settings]) -> Segmentati
         settings.convexity,
         settings.circularity,
         settings.thickness_percentile,
-        stop_flag=lambda: False,
+        stop_event=stop_event,
         font_path=None, # no font means don't draw anything
         timed=False
     )
     if contour_data_list is None:
         contour_data_list = []
+    
+    if stop_event.is_set(): # STOPCHECK!!
+        return SegmentationData(
+            img_filename=path.name,
+            image=image,
+            resolution_divisor=settings.resolution_divisor,
+            contour_data=[],
+            selected_states=[],
+            preferred_units=settings.scale_units
+        )
 
     # convert result to SegmentationData
     return SegmentationData(
@@ -68,9 +82,13 @@ class BatchWorker(QObject):
     finished = Signal()
     error = Signal(str)
 
+    pool: ProcessPoolExecutor | None = None
+
     def __init__(self):
         super().__init__()
         self._stop_requested: bool = False
+        self._manager = multiprocessing.Manager()
+        self._stop_event = self._manager.Event()
         self.start.connect(self.run)
 
     @Slot(list, Settings, int, Path)
@@ -82,6 +100,9 @@ class BatchWorker(QObject):
         ):
         """Begin processing given images using multiprocessing."""
         self._stop_requested = False
+        
+        self._manager = multiprocessing.Manager()
+        self._stop_event = self._manager.Event()
 
         # load images
         images: list[tuple[Path, npt.NDArray]] = []
@@ -103,18 +124,19 @@ class BatchWorker(QObject):
                 max_workers=workers,
                 mp_context=multiprocessing.get_context("spawn")
             ) as pool:
+                self.pool = pool
 
                 futures = {
-                    pool.submit(process_single_image, (path, image, settings)): path
+                    pool.submit(
+                        process_single_image, 
+                        (path, image, settings, self._stop_event)
+                    ): path
                     for path, image in images
                 }
 
                 for future in as_completed(futures):
                     if self._stop_requested:
-                        for f in futures:
-                            if not f.done():
-                                f.cancel()
-                        pool.shutdown(cancel_futures=True)
+                        pool.shutdown(wait=True, cancel_futures=True)
                         break
 
                     path = futures[future]
@@ -139,3 +161,7 @@ class BatchWorker(QObject):
     @Slot()
     def stop(self):
         self._stop_requested = True
+        if self._stop_event is not None:
+            self._stop_event.set()
+        if self.pool is not None:
+            self.pool.shutdown(wait=False, cancel_futures=True)

@@ -370,6 +370,9 @@ class ImagePanel(QWidget):
             logger.err("_on_processing_finished(): current_original_image is None. Not displaying image...", self)
             return
         
+        if len(image.shape) == 0 or image.shape[0] == 0 or image.shape[1] == 0:
+            return
+        
         self.display_image = image
         self.image_view.set_image(
             self.display_image, 
@@ -671,6 +674,6 @@ class ImagePanel(QWidget):
         if self.worker:
             self.worker.stop()
         self.processing_thread.quit()
-        QTimer.singleShot(1000, self.processing_thread.wait)
+        self.processing_thread.wait()
         event.accept()
     

@@ -1,0 +1,71 @@
+/* Global */
+QMainWindow::separator {
+    background: #5a5a5a;
+    width: 4px;
+    height: 4px;
+}
+
+QDockWidget {
+    margin: 0px;
+    color: #e9e9e9;
+    background-color: #252525;
+}
+
+QMenuBar#AppMenuBar {
+    background-color: #383838;
+    color: #dadada;
+    font-size: 12px;
+}
+
+QMenuBar::item {
+    padding: 3px 10px; /* Top/Bottom padding, Left/Right padding */
+}
+
+QMenuBar::item:selected, QMenuBar::item:hover {
+    background-color: lightgray;
+}
+
+/* SettingsPanel */
+QDockWidget#SettingsPanel {
+    min-width: 250px;
+    max-width: 400px;
+    background-color: #252525;
+}
+
+QFrame#ScaleParameter {
+    background-color: #353535;
+    color: #393939;
+}
+
+QFrame#ScaleParameter QLabel {
+    color: #e9e9e9;
+}
+
+QFrame#BoolParameter {
+    background-color: #353535;
+    color: #393939;
+}
+
+QFrame#BoolParameter QLabel {
+    color: #e9e9e9;
+}
+
+QFrame#SliderParameter {
+    background-color: #353535;
+    color: #393939;
+}
+
+QFrame#SliderParameter QLabel {
+    color: #e9e9e9;
+}
+
+
+
+/* ProcessPanel */
+QWidget#ProcessPanel {
+}
+
+/* OutputPanel */
+QWidget#OutputPanel {
+}
+

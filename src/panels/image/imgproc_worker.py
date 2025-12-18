@@ -13,6 +13,7 @@ from models import AppState, Settings
 
 from pathlib import Path
 import numpy as np
+import threading
 import traceback
 import cv2
 
@@ -31,6 +32,7 @@ class ImgProcWorker(QObject):
         self._settings = None
         self._has_job = False
         self._stop_requested = False
+        self._stop_event = threading.Event()
         self.font_path = AppState.annotation_font_path()
 
     @Slot()
@@ -62,6 +64,8 @@ class ImgProcWorker(QObject):
 
     def enqueue(self, image, settings):
         self._mutex.lock()
+        self._stop_event.set()    # cancel current processing
+        self._stop_event.clear()  # prepare for new job
         self._image = image.copy()
         self._settings = settings
         self._has_job = True
@@ -72,6 +76,7 @@ class ImgProcWorker(QObject):
     def stop(self):
         self._mutex.lock()
         self._stop_requested = True
+        self._stop_event.set()
         self._wait.wakeOne()
         self._mutex.unlock()
     
@@ -110,7 +115,7 @@ class ImgProcWorker(QObject):
                     settings.convexity,
                     settings.circularity,
                     settings.thickness_percentile,
-                    lambda: self._stop_requested,
+                    self._stop_event,
                     AppState.annotation_font_path(),
                     timed=True
                 )

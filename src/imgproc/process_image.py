@@ -1,11 +1,12 @@
 from models import ContourData
 
+from PIL import Image, ImageFont, ImageDraw
+from imgproc.stop_event import StopEvent
+from pathlib import Path
 import cv2
 import numpy as np
 import numpy.typing as npt
 import math
-from PIL import Image, ImageFont, ImageDraw
-from pathlib import Path
 
 import time
 
@@ -40,7 +41,7 @@ def process_image(
         convex_thresh: float, 
         circ_thresh: float,
         thickness_percentile: int,
-        stop_flag,
+        stop_event: StopEvent,
         font_path: Path | None,
         verbose = False,
         timed = False
@@ -65,11 +66,19 @@ def process_image(
     kernel /= kernel_sum
     img = cv2.filter2D(src=input_image, ddepth=-1, kernel=kernel)
     _, thresh = cv2.threshold(img, thresh_val, 255, cv2.THRESH_BINARY)
+    
+    if stop_event.is_set(): # STOPCHECK!!
+        print("process_image: Exited @1")
+        return np.zeros(0), None
 
     # Remove small black features
     inverted = cv2.bitwise_not(thresh)
     contours, _ = cv2.findContours(inverted, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     for c in contours:
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @2")
+            return np.zeros(0), None
+        
         area_proportion = cv2.contourArea(c) / total_image_area
         if area_proportion < 0.0006:
             cv2.drawContours(thresh, [c], -1, 255, cv2.FILLED)
@@ -82,13 +91,27 @@ def process_image(
 
     # Dilate image
     dilate_size = max(1, int(dilate))
-    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dilate_size,dilate_size))
-    dilated = cv2.morphologyEx(thresh, cv2.MORPH_DILATE, dilate_kernel)
+    if dilate_size > 1:
+        dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (dilate_size,dilate_size))
+        dilated = cv2.morphologyEx(thresh, cv2.MORPH_DILATE, dilate_kernel)
+    else:
+        dilated = thresh
+    
+    if stop_event.is_set(): # STOPCHECK!!
+        print("process_image: Exited @3")
+        return np.zeros(0), None
 
     # Dilate image
     erode_size = max(1, int(erode))
-    erode_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (erode_size,erode_size))
-    eroded = cv2.morphologyEx(dilated, cv2.MORPH_ERODE, erode_kernel)
+    if erode_size > 1:
+        erode_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (erode_size,erode_size))
+        eroded = cv2.morphologyEx(dilated, cv2.MORPH_ERODE, erode_kernel)
+    else:
+        eroded = dilated
+    
+    if stop_event.is_set(): # STOPCHECK!!
+        print("process_image: Exited @4")
+        return np.zeros(0), None
 
     if show_thresholded:
         return eroded, None # None means don't analyze data
@@ -103,10 +126,18 @@ def process_image(
     # Find contours
     contours, _ = cv2.findContours(eroded, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
     
+    if stop_event.is_set(): # STOPCHECK!!
+        print("process_image: Exited @5")
+        return np.zeros(0), None
+    
     # Filter contours by size and convexness
     filtered_contours = []
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     for c in contours:
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @6")
+            return np.zeros(0), None
+        
         # Check if contour touches edge of image
         if np.any(c[:, 0, 0] <= 1) or np.any(c[:, 0, 0] >= (w-2)) or \
            np.any(c[:, 0, 1] <= 1) or np.any(c[:, 0, 1] >= (h-2)):
@@ -154,6 +185,10 @@ def process_image(
     # Create binary mask of all contours
     all_contours_mask = np.zeros_like(eroded)
     cv2.drawContours(all_contours_mask, filtered_contours, -1, 255, thickness=cv2.FILLED)
+    
+    if stop_event.is_set(): # STOPCHECK!!
+        print("process_image: Exited @7")
+        return np.zeros(0), None
 
     # return all_contours_mask, []
     
@@ -200,7 +235,8 @@ def process_image(
         if give_up:
             break
 
-        if stop_flag():
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @8")
             return out_img, data
 
         # Compute center of mass of the contour
@@ -228,10 +264,18 @@ def process_image(
         # Build exclusion mask inside this cropped area
         exclusion_raw = ((cropped_mask == 0) & (cropped_eroded == 255)).astype(np.uint8)
         exclusion_edges = cv2.Canny(exclusion_raw, 0, 0)
+        
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @9")
+            return np.zeros(0), None
 
         # distance transform (computed once)
         dist = cv2.distanceTransform(255 - cropped_mask, cv2.DIST_L2, 5)
         distance_samples = dist[exclusion_edges > 0]
+        
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @10")
+            return np.zeros(0), None
 
         # Thickness estimation
         nonzero_vals = distance_samples[distance_samples > 0]
@@ -252,11 +296,19 @@ def process_image(
         offset_mask = (dist <= thickness_px).astype(np.uint8) * 255
         outer_contour, _ = cv2.findContours(offset_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         outer_contour += offset
+        
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @11")
+            return np.zeros(0), None
 
         dist_inner = cv2.distanceTransform(offset_mask, cv2.DIST_L2, 5)
         offset_mask_eroded = (dist_inner > thickness_px).astype(np.uint8) * 255
         inner_contour, _ = cv2.findContours(offset_mask_eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         inner_contour += offset
+        
+        if stop_event.is_set(): # STOPCHECK!!
+            print("process_image: Exited @12")
+            return np.zeros(0), None
 
         # Calculate g-ratio & circularity
         inner_contour_perimeter = cv2.arcLength(inner_contour[0], True)
@@ -283,6 +335,10 @@ def process_image(
             line_spacing = 14 * draw_scale
 
             out_pil = Image.fromarray(cv2.cvtColor(out_img, cv2.COLOR_BGR2RGB))
+            
+            if stop_event.is_set(): # STOPCHECK!!
+                print("process_image: Exited @13")
+                return np.zeros(0), None
 
             if show_text:
                 draw = ImageDraw.Draw(out_pil)
@@ -303,6 +359,10 @@ def process_image(
                     (0, 0, 0),
                     font
                 )
+                
+                if stop_event.is_set(): # STOPCHECK!!
+                    print("process_image: Exited @14")
+                    return np.zeros(0), None
 
                 inner_text = (
                     f"G:{g_ratio:.2f}"
@@ -318,6 +378,10 @@ def process_image(
                 )
 
             out_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
+                
+            if stop_event.is_set(): # STOPCHECK!!
+                print("process_image: Exited @15")
+                return np.zeros(0), None
 
         # Store results
         data.append(ContourData(

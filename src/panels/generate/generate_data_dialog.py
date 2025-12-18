@@ -241,7 +241,7 @@ class GenerateDataDialog(QDialog):
             filter="SEG Files (*.seg)"
         )
         file_names.sort() # UX
-        
+
         # get current paths
         current_paths: list[Path] = []
         for i in range(self.list_widget.count()):
@@ -309,7 +309,7 @@ class GenerateDataDialog(QDialog):
         
         # check if valid files
         filtered_segmentations: list[SegmentationData] = []
-        invalid_paths = set()
+        invalid_paths: set[Path] = set()
         for p in raw_image_paths:
             valid = p.exists()
             if valid:
@@ -331,10 +331,13 @@ class GenerateDataDialog(QDialog):
                     return
                 else:
                     invalid_paths.add(p)
-        invalid_paths = list(invalid_paths)
+        list_items = [self.list_widget.item(index) for index in range(self.list_widget.count())]
         if len(invalid_paths) > 0:
             # remove invalid files
-            for item in invalid_paths:
+            for item in list_items:
+                item_path: Path = item.data(Qt.ItemDataRole.UserRole)
+                if item_path not in invalid_paths:
+                    continue
                 try:
                     index = self.list_widget.row(item)
                     removed_item = self.list_widget.takeItem(index)
