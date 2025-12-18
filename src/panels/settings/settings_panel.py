@@ -156,8 +156,12 @@ class SettingsPanel(QWidget):
     
     def to_settings(self) -> Settings:
         """Return all current field values as a `Settings` object."""
+        try:
+            scale = float(self.scale_prm_widget.get_field_widget().text())
+        except Exception as e:
+            scale = 1.0
         return Settings(
-            scale = float(self.scale_prm_widget.get_field_widget().text()),
+            scale = scale,
             scale_units = self.scale_prm_widget.get_combo_box_widget().currentText(),
             resolution_divisor=self.res_divisor_prm_widget.get_spin_box().value(),
             show_original = self.show_orig_prm_widget.get_checkbox().isChecked(),

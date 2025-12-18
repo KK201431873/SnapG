@@ -72,7 +72,7 @@ class ProcessPanel(QWidget):
         layout.addWidget(data_prep_group)
 
         # chosen images label
-        self.chosen_images_label = QLabel("No Images Selected")
+        self.chosen_images_label = QLabel("No Images Chosen")
         data_prep_group_layout.addWidget(self.chosen_images_label)
         self._update_images_label()
 
@@ -238,12 +238,12 @@ class ProcessPanel(QWidget):
     def _update_images_label(self):
         """Updates the images chosen label with the number of selected images."""
         if len(self.chosen_images) == 0:
-            self.chosen_images_label.setText("No Images Selected")
+            self.chosen_images_label.setText("No Images Chosen")
             return
         # count selected files
         total_selected = sum([1 for _, checked in self.chosen_images if checked])
         total_unselected = len(self.chosen_images) - total_selected
-        self.chosen_images_label.setText(f"{total_selected} images selected ({total_unselected} unselected)")
+        self.chosen_images_label.setText(f"{total_selected} images checked ({total_unselected} unchecked)")
     
     def _update_path_label(self):
         """Updates the destination path label."""

@@ -240,6 +240,8 @@ class GenerateDataDialog(QDialog):
             caption="Open Segmentation File(s)",
             filter="SEG Files (*.seg)"
         )
+        file_names.sort() # UX
+        
         # get current paths
         current_paths: list[Path] = []
         for i in range(self.list_widget.count()):

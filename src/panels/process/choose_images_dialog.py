@@ -209,6 +209,8 @@ class ChooseImagesDialog(QDialog):
             caption="Open Image(s)",
             filter="Images (*.jpg *.jpeg *.png *.gif *.bmp *.tiff *.tif)"
         )
+        file_names.sort() # UX
+
         # get current paths
         current_paths: list[Path] = []
         for i in range(self.list_widget.count()):
