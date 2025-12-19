@@ -145,8 +145,26 @@ Now that you have the appropriate parameters for your image set, it's time to ba
   
   ![Batch processing confirm files](images/batch_confirm_files.gif)
 
-4. 
+4. Press the `Choose Destination Path` button and select where you'd like SnapG to save segmentation files. SnapG will create a folder within your chosen folder to store the files.
 
+5. Select whether you'd like to use multiprocessing. Multiprocessing lets the code process images in parallel using each of your computer's logical processors, which is especially useful for processing large images and/or a large number of images. It is recommended to select the maximum number of workers (another word for logical processor).
+  
+  ![Batch processing "processing options" section](images/batch_proc_options.png)
+
+6. When you're ready, hit Start!
+  
+  ![Batch processing start processing](images/batch_start_proc.gif)
+
+7. Check the folder where you saved your segmentation files. You should see a `.seg` file for each image that was processed.
+  
+  ![Batch processing segmentation files](images/batch_seg_files.png)
+
+
+### Reviewing Segmentation Files
+
+SnapG will produce false positive detections more often than not, so it's important to manually filter them out. But don't worry, SnapG's user interface simplifies the review process as well!
+
+1. Close the `Batch Processing` panel.
 
 
 
