@@ -185,27 +185,35 @@ SnapG will produce false positive detections more often than not, so it's import
   
     ![Review show/hide contours](images/review_show_hide.gif)
 
-5. **Repeat** for each of your `.seg` files! Your changes save every time you click a contour, so you don't have to worry about losing your work.
+5. **Repeat** for each of your `.seg` files! Your changes save every time you click a contour, so you don't have to worry about losing your work. Again, the `Output` panel display real-time data that adjusts to which contours you select
+  
+    ![Review live output data](images/review_output_panel.gif)
 
 
-#### Save Your Settings
+### Generating Data (Last Step)
 
-- Press **CTRL+S** to save current settings to a JSON file.
-- Settings auto-save if the program is closed accidentally.
+With your annotated `.seg` files, all that's left to do is convert it into readable data!
 
----
+1. Hover over the `Generate` menu in the top left and click `Segmentation data`. You will be greeted by a familiar-looking dialog.
+  
+    ![Generate data empty dialog](images/generate_empty_dialog.png)
+  
+2. Click `Add Files`, choose your `.seg` files, click `Select All`, and check the `Check selected` box in the top left.
+  
+    ![Generate data add files](images/generate_add_files.gif)
 
-#### Buttons Instructions
+3. Click `Generate`. You will be prompted to select the destination folder for the data. Once you confirm a folder, SnapG will generate the data and open the folder once it's done.
+  
+    ![Generate data get data](images/generate_get_data.gif)
 
-Click these buttons in order:
+4. The output CSV is formatted to include separate lists of axon data for each image, with each axon ID corresponding to a number drawn in that image. That's it!
 
-- **Select Settings**: Choose the JSON settings file you saved.
-- **Select Images**: Select the images you want to segment using these settings.
-- **Process Images**: Choose an output folder. A "STOP" button will appear to the right if you need to cancel the operation.
-  - This generates `.pkl` files containing contours and measurements for each image.
-- **Review Output**: Select the `.pkl` files you want to review. Then, follow the instructions in the text box.
-  - _Note: Disabling a contour in the reviewer doesn't delete it on exit; don't worry if you misclick._
-- **Generate Data**: Select the `.pkl` files you want to generate a CSV file for. Then, choose an output folder to save your data to.
+
+### How to Save and Load Settings
+
+- **Saving**: Open the `File` menu, click `Save… >`, and then `Current settings`. Choose the destination file, and SnapG will save your settings as a `.snpg` file.
+
+- **Loading**: Open the `File` menu, click `Open… >`, and then `Settings file`. Choose your `.snpg` file and hit open!
 
 ---
 
@@ -218,6 +226,8 @@ As mentioned in the [Tuning the Segmentation Parameters](#tuning-the-segmentatio
 - **Distance Per Pixel**: Conversion from image pixel distance to real distance. Scales with Image Resolution Divider. This parameter is used when generating CSV data from segmented images.
 
 - **Image Resolution Divisor**: How much to downscale the image by. For example, a value of 4 would shrink a 4096x4096 image to 1024x1024 before feeding it into the segmentation algorithm.
+  
+    ![Image resolution divisor](images/param_img_res.gif)
 
 - **Show Original**: Whether to show the original image file. Useful for visually validating contours and thresholds.
 
