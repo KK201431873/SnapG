@@ -39,6 +39,8 @@ PySide6 application for partially automating myelinated axon segmentation in mic
 
 ## How to Use SnapG
 
+Before we start...
+
 1. Open SnapG using one of the methods listed above. This window should appear:
   
   ![SnapG application window](images/snapg_window.png)
@@ -53,12 +55,14 @@ Hover over the `View` menu in the top left. The following options should appear:
 
 - **Panels**: You can show and hide the three panels using this menu.
 
-- **Color Theme**: Only the "Light" color theme is currently available. More may be added!
+- **Color Theme**: Only the "Light" theme is currently available. More may be added!
 
 - **Reset View**: Click this option at any time to reset the widths and heights of the panels.
 
 
 ### Opening Images
+
+In order to segment images, you'll need to import them into SnapG first!
 
 1. Hover over the `File` menu in the top left, and click on `Open… >` then `Image file(s)`.
   
@@ -75,16 +79,20 @@ Hover over the `View` menu in the top left. The following options should appear:
 
 ### Controlling the Image
 
-1. To pan the image, press and drag right click in the image panel.
+It's important to know how to navigate the image view to start segmenting images.
+
+1. To **pan** the image, press and drag **Right Mouse Button** in the image panel.
   
   ![Panning the image view](images/pan_image_view.gif)
 
-2. To zoom in and out, use the scroll wheel within the image panel.
+2. To **zoom** in and out, use the **Scroll Wheel** within the image panel.
   
   ![Zooming the image view](images/zoom_image_view.gif)
 
 
 ### Tuning the Segmentation Parameters
+
+SnapG's segmentation algorithm is only semi-automated. However, SnapG's user interface aims to simplify the parameter tuning process, and gives the user greater control over the quality of its outputs!
 
 1. I suggest you close the `Batch Processing` panel for this part and widen the `Segmentation Settings` panel for enhanced visibility.
 
@@ -123,9 +131,21 @@ Hover over the `View` menu in the top left. The following options should appear:
 
 ### Batch Processing
 
-1. Show the `Batch Processing` panel by using the `View` menu in the top left. There should be a 
+Now that you have the appropriate parameters for your image set, it's time to batch process the whole set.
 
+1. Show the `Batch Processing` panel by using the `View` menu in the top left. Press the `Choose Images` button at the top of the panel. This window should appear: 
+  
+  ![Batch processing choose images window](images/batch_choose_images.png)
 
+2. Click `Add Images` and select the images you tuned the segmentation parameters for.
+  
+  ![Batch processing file list](images/batch_file_list.png)
+
+3. Click `Select All`, check the `Check Selected` box in the top left of the window, and press `OK`. If you only want to process a part of your image set, uncheck the files you want to exclude from the batch process.
+  
+  ![Batch processing confirm files](images/batch_confirm_files.gif)
+
+4. 
 
 
 
