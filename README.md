@@ -71,6 +71,12 @@ Click these buttons in order:
 
 TODO
 
+Building:
+Delete `__pycache__` directories:
+```
+Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
+```
+
 Rebuild command (Run from `SnapG/`):
 ```
 pyinstaller main.spec

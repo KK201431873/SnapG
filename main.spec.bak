@@ -37,12 +37,12 @@ exe = EXE(
     pyz,
     a.scripts,
     [],
-    exclude_binaries=False,
+    exclude_binaries=False,   # include everything in EXE
     name='SnapG',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,           # disable UPX
-    console=False,
+    upx=True,
+    console=False,            # GUI app
     icon='src\\assets\\favicon.ico'
 )
