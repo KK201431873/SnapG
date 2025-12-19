@@ -236,13 +236,52 @@ As mentioned in the [Tuning the Segmentation Parameters](#tuning-the-segmentatio
 - **Show Text**: Whether to show axon numbers and g-ratios on the image. Useful for checking data in the Output panel.
 
 
+### OpenCV Parameters
+
+- **Threshold**: The minimum brightness value for a pixel to be part of an axon's interior. Ranges from 0 (black) to 1 (white).
+  
+    ![Threshold](images/param_threshold.gif)
+
+- **Radius**: The size of the circular smoothing kernel, in pixels. Greater values reduce noise and lower values increase detail.
+  
+    ![Radius](images/param_radius.gif)
+
+- **Dilate**: How much to expand the white threshold region by, in pixels. Can be used with Erode to close small black gaps in the threshold image (morphological closing).
+  
+    ![Dilate](images/param_dilate.gif)
+
+- **Erode**: How much to contract the white threshold region by, in pixels. Can be used with Dilate to close small black gaps in the threshold image (morphological closing)
+  
+    ![Erode](images/param_erode.gif)
+
+- **Min Size**: The minimum contour bounding box size as a proportion of the entire image in order to be classified as an axon. Ranges from 0 (nothing) to 1 (the whole image).
+  
+    ![Min Size](images/param_min_size.gif)
+
+- **Max Size**: The maximum contour bounding box size as a proportion of the entire image in order to be classified as an axon. Ranges from 0 (nothing) to 1 (the whole image).
+  
+    ![Max Size](images/param_max_size.gif)
+
+- **Convexity**: The minimum convexity for a contour to be classified as an axon. Convexity is calculated by (contour area) / (convex hull area). Ranges from 0 (a thin line) to 1 (perfectly convex)
+  
+    ![Convexity](images/param_convexity.gif)
+
+- **Circularity**: The minimum circularity for a contour to be classified as an axon. Circularity is calculated by 4pi * (contour area) / (contour perimeter) ^ 2. Ranges from 0 (a thin line) to 1 (perfect circle)
+  
+    ![Circularity](images/param_circularity.gif)
+
+- **Thickness Percentile**: Used to extract myelin thickness from a numerical distribution. Higher values tend to thicker myelin estimations, while lower values tend to thinner myelin. Ranges from 0 to 100.
+  
+    ![Thickness Percentile](images/param_thick_percent.gif)
+
 ---
 
 ## Development
 
-TODO
+### Image processing
+The main image processing function can be found in `src/imgproc/process_image.py`. Feel free to modify it and try out different algorithms.
 
-Building:
+### Building:
 Delete `__pycache__` directories:
 ```
 Get-ChildItem -Recurse -Directory -Filter "__pycache__" | Remove-Item -Recurse -Force
