@@ -475,4 +475,5 @@ class ProcessPanel(QWidget):
             self.batch_worker.stop()
         if self.worker_thread and self.worker_thread.isRunning():
             self.worker_thread.quit() 
+            self.worker_thread.wait()
         event.accept()

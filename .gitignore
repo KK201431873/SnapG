@@ -2,7 +2,12 @@
 __program_config__
 src/__appdata__/*
 
+build
+dist
+
 __pycache__
+
+error_log.txt
 
 *.pkl
 *.seg

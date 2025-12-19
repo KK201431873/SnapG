@@ -36,14 +36,14 @@ def get_csv_lines(seg_data_list: list[SegmentationData],
             color = (0, 255, 0)
             cv2.drawContours(display_img, [c.inner_contour], -1, color, 2)
             cv2.drawContours(display_img, [c.outer_contour], -1, color, 2)
-        
+
         # draw text
         img_h = display_img.shape[0]
         img_w = display_img.shape[1]
         draw_scale = int(8 * max(img_h, img_w) / 4096)
         line_spacing = 14*draw_scale
         out_pil = Image.fromarray(cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB))
-        font = ImageFont.truetype(font_path, int(15*draw_scale))
+        font = ImageFont.truetype(font_path, max(15, int(15 * draw_scale)))
         draw = ImageDraw.Draw(out_pil)
         for i, c in enumerate(reindexed_contour_data):
             M = cv2.moments(c.inner_contour)
@@ -52,14 +52,23 @@ def get_csv_lines(seg_data_list: list[SegmentationData],
             cx = int(M["m10"] / M["m00"])
             cy = int(M["m01"] / M["m00"] - 6*draw_scale)
 
+            if max(img_h, img_w) < 512:
+                x_corr = 5 * max(1, draw_scale)
+                y_corr = 10 * max(1, line_spacing)
+            else:
+                x_corr = 5 * draw_scale
+                y_corr = 0.5 * line_spacing
+
             ID = i + 1
+            label = f"#{ID}"
+
             color = (255, 255, 255)
             def draw_shadow_text(dx,dy):
-                draw.text((int(cx-5*draw_scale*len(f"#{ID}"))+dx, cy-1/2*line_spacing+dy), f"#{ID}", font=font, fill=color)
+                draw.text((int(cx-x_corr*len(label))+dx, cy-y_corr+dy), label, font=font, fill=color)
             for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
                 draw_shadow_text(dx,dy)
             color = (0, 0, 0)
-            draw.text((int(cx-5*draw_scale*len(f"#{ID}")), cy-1/2*line_spacing), f"#{ID}", font=font, fill=color)
+            draw.text((int(cx-x_corr*len(label)), cy-y_corr), label, font=font, fill=color)
             
         display_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
         

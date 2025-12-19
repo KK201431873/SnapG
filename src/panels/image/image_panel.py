@@ -370,6 +370,9 @@ class ImagePanel(QWidget):
             logger.err("_on_processing_finished(): current_original_image is None. Not displaying image...", self)
             return
         
+        if len(image.shape) == 0 or image.shape[0] == 0 or image.shape[1] == 0:
+            return
+        
         self.display_image = image
         self.image_view.set_image(
             self.display_image, 
@@ -575,7 +578,7 @@ class ImagePanel(QWidget):
         draw_scale = int(8 * max(img_h, img_w) / 4096)
         line_spacing = 14*draw_scale
         out_pil = Image.fromarray(cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB))
-        font = ImageFont.truetype(AppState.annotation_font_path(), int(15*draw_scale))
+        font = ImageFont.truetype(AppState.annotation_font_path(), max(15, int(15 * draw_scale)))
         draw = ImageDraw.Draw(out_pil)
         for i, c in enumerate(contour_data):
             if (self.exclude_deselected_contours and not selected_states[i]) or self.exclude_all_contours:
@@ -587,14 +590,23 @@ class ImagePanel(QWidget):
             cx = int(M["m10"] / M["m00"])
             cy = int(M["m01"] / M["m00"] - 6*draw_scale)
 
+            if max(img_h, img_w) < 512:
+                x_corr = 5 * max(1, draw_scale)
+                y_corr = 10 * max(1, line_spacing)
+            else:
+                x_corr = 5 * draw_scale
+                y_corr = 0.5 * line_spacing
+
             ID = i + 1
+            label = f"#{ID}"
+
             color = (255, 255, 255) if selected_states[i] else (192, 192, 192)
             def draw_shadow_text(dx,dy):
-                draw.text((int(cx-5*draw_scale*len(f"#{ID}"))+dx, cy-1/2*line_spacing+dy), f"#{ID}", font=font, fill=color)
+                draw.text((int(cx-x_corr*len(label))+dx, cy-y_corr+dy), label, font=font, fill=color)
             for dx,dy in [(-2,-2),(2,-2),(2,2),(-2,2)]:
                 draw_shadow_text(dx,dy)
             color = (0, 0, 255) if selected_states[i] else (64, 64, 64)
-            draw.text((int(cx-5*draw_scale*len(f"#{ID}")), cy-1/2*line_spacing), f"#{ID}", font=font, fill=color)
+            draw.text((int(cx-x_corr*len(label)), cy-y_corr), label, font=font, fill=color)
             
         display_img = cv2.cvtColor(np.array(out_pil), cv2.COLOR_RGB2BGR)
         return display_img
@@ -671,6 +683,6 @@ class ImagePanel(QWidget):
         if self.worker:
             self.worker.stop()
         self.processing_thread.quit()
-        QTimer.singleShot(1000, self.processing_thread.wait)
+        self.processing_thread.wait()
         event.accept()
     
