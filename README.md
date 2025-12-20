@@ -6,20 +6,28 @@ PySide6 application for partially automating myelinated axon segmentation in mic
 
 ## Installation
 
-1. **Download** or clone this repository. To download this repository, scroll to the top of this GitHub page, click the green `<> Code` button, and then press `Download ZIP`. Then, extract the ZIP file.
+1. **Download** or clone this repository. To download this repository, scroll to the top of this GitHub page, click the green `<> Code` button, and then press `Download ZIP`. Then, extract the ZIP file (*on Mac, double click the ZIP file*).
 
-2. **Install Python 3** if not already installed.
+2. **Install Python 3** if not already installed. You can verify if you have Python installed by running one of the following commands in your terminal
 
-3. **Install dependencies**: Open a terminal in the `SnapG/` folder and run
+    ```
+    python --version
+    python3 --version
+    py --version
+    ```
+
+3. **Install dependencies**: Open a terminal in the `SnapG/` folder (*on Mac, open terminal, type `cd`, then drag and drop the `SnapG/` folder in*). Then, run
 
     ```
     pip install -r requirements.txt
     ```
 
-    If that doesn't work, try running
+    If that doesn't work, try running one of the following commands
 
     ```
     py -m pip install -r requirements.txt
+    python -m pip install -r requirements.txt
+    python3 -m pip install -r requirements.txt
     ```
 
 4. **Try opening the app**: For Mac users, open the `SnapG/` folder in Finder and double click the `SnapG.command` file. For Windows and Linux users, open a terminal in the `SnapG/` folder and run
@@ -34,6 +42,18 @@ PySide6 application for partially automating myelinated axon segmentation in mic
     python3 src/main.py
     py src/main.py
     ```
+    
+    *NOTE*: For Mac users, if you get this warning:
+  
+    ![Mac opening issue](images/mac_open_issue.png)
+
+    Try this solution: 
+    
+    - Open `System Settings` → `Privacy & Security` → Scroll to bottom
+    - Locate *"SnapG.command was blocked from use because it is not from an identified developer"*
+    - Click `Allow Anyway` → Double-click `SnapG.command` again
+
+
 
 ---
 
