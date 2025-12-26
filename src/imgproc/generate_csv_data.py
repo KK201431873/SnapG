@@ -80,11 +80,8 @@ def get_csv_lines(seg_data_list: list[SegmentationData],
     
     # get axon metrics
     g_ratios: list[float] = []
-    for _, contour_data_list, preferred_units in data_lists:
-        units_factor: float = 1.0
-        if preferred_units == "nm": # convert to um
-            units_factor = 1.0 / 1000.0
-        g_ratios += [c.g_ratio * units_factor for c in contour_data_list]
+    for _, contour_data_list, _ in data_lists:
+        g_ratios += [c.g_ratio for c in contour_data_list]
     n_axons = len(g_ratios)
     g_ratio_mean = np.mean(g_ratios)
     g_ratio_stdev = np.std(g_ratios)
@@ -95,9 +92,9 @@ def get_csv_lines(seg_data_list: list[SegmentationData],
     
     csv_lines.append(f"Metrics for all axons\n")
     csv_lines.append(f"Number of axons,{n_axons:.4f}\n")
-    csv_lines.append(f"Mean G-ratio (um),{g_ratio_mean:.4f}\n")
-    csv_lines.append(f"G-ratio Stdev (um),{g_ratio_stdev:.4f}\n")
-    csv_lines.append(f"G-ratio SE (um),{g_ratio_se:.4f}\n")
+    csv_lines.append(f"Mean G-ratio,{g_ratio_mean:.4f}\n")
+    csv_lines.append(f"G-ratio Stdev,{g_ratio_stdev:.4f}\n")
+    csv_lines.append(f"G-ratio SE,{g_ratio_se:.4f}\n")
     csv_lines.append(f"\n")
 
     csv_lines.append(f"Image,Axons found\n")
